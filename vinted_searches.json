@@ -1,0 +1,43 @@
+[
+  {
+    "label": "Jellycat",
+    "keywords": [
+      "Jellycat"
+    ],
+    "search_text": "Jellycat",
+    "max_price": 10,
+    "min_price": null,
+    "size_ids": [],
+    "brand_ids": [],
+    "status_ids": [
+      6
+    ],
+    "order": "newest_first",
+    "exclude_words": [
+      "Home Bargains",
+      "inspired",
+      "pyjamas",
+      "style",
+      "themed",
+      "lookalike",
+      "glasses",
+      "stickers",
+      "charm",
+      "kaycharm",
+      "Wireless microphone",
+      "sticker",
+      "poplings",
+      "pin",
+      "pin badge",
+      "badge",
+      "postcards",
+      "bags",
+      "bag",
+      "wrap",
+      "Warmies",
+      "Salomon"
+    ],
+    "channel_id": "1492335720520749189",
+    "enabled": true
+  }
+]
