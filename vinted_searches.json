@@ -33,5 +33,32 @@
     ],
     "channel_id": "1482473985030492300",
     "enabled": true
+  },
+  {
+    "label": "Xbox Consoles",
+    "keywords": [
+      "xbox one",
+      "xbox one s",
+      "xbox series s",
+      "xbox series x",
+      "xbox one series"
+    ],
+    "search_text": "xbox one",
+    "max_price": null,
+    "min_price": 15,
+    "size_ids": [],
+    "brand_ids": [],
+    "status_ids": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "order": "newest_first",
+    "exclude_words": [
+      "360"
+    ],
+    "channel_id": null,
+    "enabled": true
   }
 ]
