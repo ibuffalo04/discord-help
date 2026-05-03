@@ -1,1 +1,27 @@
-[]
+[
+  {
+    "label": "xbox controller",
+    "keywords": [
+      "xbox controller"
+    ],
+    "search_text": "xbox controller",
+    "max_price": 15,
+    "min_price": null,
+    "size_ids": [],
+    "brand_ids": [],
+    "status_ids": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "order": "newest_first",
+    "exclude_words": [
+      "360",
+      "game",
+      "games"
+    ],
+    "channel_id": "1482473985030492300",
+    "enabled": true
+  }
+]
