@@ -2,7 +2,8 @@ name: discord-help
 
 on:
   schedule:
-    - cron: '*/5 * * * *'
+    # Triggers every hour to start a new 55-minute loop
+    - cron: '0 * * * *'
   push:
     branches:
       - main
@@ -19,14 +20,29 @@ jobs:
         with:
           python-version: '3.11'
       - run: pip install requests
-      - run: python vinted_discord_alert.py
+      
+      - name: Run script every 5 seconds for 55 minutes
+        run: |
+          # Calculate end time (55 minutes = 3300 seconds)
+          end=$((SECONDS + 3300))
+          
+          while [ $SECONDS -lt $end ]; do
+            echo "Running script at $(date)"
+            python vinted_discord_alert.py
+            
+            # Save progress immediately so data isn't lost if the runner stops
+            git config user.name "github-actions"
+            git config user.email "github-actions@github.com"
+            git add vinted_seen_ids.json || true
+            
+            # Only commit and push if there are actual changes
+            if ! git diff --cached --quiet; then
+              git commit -m "Update seen IDs (automated loop)"
+              git push || true
+            fi
+            
+            sleep 5
+          done
         env:
           DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
           DISCORD_CHANNEL_ID: ${{ secrets.DISCORD_CHANNEL_ID }}
-      - name: Save seen IDs
-        run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-          git add vinted_seen_ids.json || true
-          git diff --cached --quiet || git commit -m "Update seen IDs"
-          git push || true
