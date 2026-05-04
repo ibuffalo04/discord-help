@@ -21,9 +21,9 @@ jobs:
           python-version: '3.11'
       - run: pip install requests
       
-      - name: Run script every 5 seconds for 55 minutes
+      - name: Run script every 5 seconds for 180 minutes
         run: |
-          # Calculate end time (55 minutes = 3300 seconds)
+          # Calculate end time (180 minutes = 10800 seconds)
           end=$((SECONDS + 3300))
           
           while [ $SECONDS -lt $end ]; do
