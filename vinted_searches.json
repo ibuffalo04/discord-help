@@ -1,1 +1,55 @@
-[]
+[
+  {
+    "label": "Xbox Controller",
+    "keywords": [
+      "xbox one controller",
+      "xbox series s controller",
+      "xbox series x controller",
+      "xbox wireless controller",
+      "xbox gamepad",
+      "xbox one wireless controller",
+      "xbox series wireless controller",
+      "xbox controller used",
+      "xbox controller second hand",
+      "xbox controller for sale",
+      "xbox one pad",
+      "xbox series s pad",
+      "xbox series x pad",
+      "microsoft xbox controller",
+      "xbox one joystick",
+      "xbox series joystick",
+      "xbox controller cheap",
+      "xbox controller discount",
+      "xbox one original controller",
+      "xbox series original controller",
+      "one s controller",
+      "one controller",
+      "xbox controller",
+      "series s controller",
+      "series x controller"
+    ],
+    "search_text": "xbox one controller",
+    "max_price": 12,
+    "min_price": null,
+    "size_ids": [],
+    "brand_ids": [],
+    "status_ids": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "order": "newest_first",
+    "exclude_words": [
+      "holder",
+      "wired",
+      "clock",
+      "fridge",
+      "switch",
+      "kontrol freek",
+      "freak"
+    ],
+    "channel_id": "1482473985030492300",
+    "enabled": true
+  }
+]
