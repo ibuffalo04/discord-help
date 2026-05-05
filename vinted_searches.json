@@ -52,5 +52,63 @@
     ],
     "channel_id": "1482473985030492300",
     "enabled": true
+  },
+  {
+    "label": "Xbox Console",
+    "keywords": [
+      "xbox one console",
+      "xbox one original",
+      "xbox one model 1540",
+      "xbox one first generation",
+      "xbox one s console",
+      "xbox one s model 1681",
+      "xbox one s slim",
+      "xbox one s all-digital edition",
+      "xbox one x console",
+      "xbox one x model 1787",
+      "xbox one x 4k",
+      "xbox one gaming console",
+      "xbox one bundle",
+      "xbox one used",
+      "xbox one second hand",
+      "xbox one for sale",
+      "microsoft xbox one",
+      "xbox one black console",
+      "xbox one white console",
+      "xbox one limited edition",
+      "xbox one refurbished",
+      "xbox one gaming system",
+      "xbox one disc version",
+      "xbox one digital version",
+      "xbox one console cheap",
+      "xbox one console discount",
+      "xbox one console original",
+      "xbox one console new",
+      "xbox one console preowned",
+      "xbox console",
+      "xbox one",
+      "series x",
+      "series s",
+      "one s",
+      "xbox"
+    ],
+    "search_text": "xbox one console",
+    "max_price": null,
+    "min_price": 20,
+    "size_ids": [],
+    "brand_ids": [],
+    "status_ids": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "order": "newest_first",
+    "exclude_words": [
+      "fridge",
+      "clock"
+    ],
+    "channel_id": "1482415297179684966",
+    "enabled": true
   }
 ]
