@@ -119,7 +119,8 @@
     "order": "newest_first",
     "exclude_words": [
       "fridge",
-      "clock"
+      "clock",
+      "360"
     ],
     "channel_id": "1482415297179684966",
     "enabled": true
