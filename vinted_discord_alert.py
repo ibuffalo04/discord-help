@@ -1,2011 +1,1238 @@
-"""
-Vinted → Discord Alert Bot
-==========================
-- Reads searches from vinted_searches.json
-- Uses Discord Bot Token for real working buttons
-- Loops every 5 seconds for 55 seconds per run
-- Supports exclude words, multiple keywords, all condition types
-- Uses Vinted's internal catalogue API with the web session cookie
-- Falls back to public item pages when individual item details
-  are unavailable
-
-GitHub Secrets needed:
-DISCORD_BOT_TOKEN — your Discord bot token
-DISCORD_CHANNEL_ID — right-click channel in Discord → Copy Channel ID
-
-Optional:
-VINTED_COOKIE — a Vinted cookie string containing access_token_web
-                (recommended if GitHub Actions cannot obtain it
-                 automatically)
-"""
-
-import time
-import json
 import os
+import json
+import time
 import re
-import requests
+import html
 from datetime import datetime, timezone
+from urllib.parse import urlencode
+
+import requests
+from bs4 import BeautifulSoup
 
 
-# ──────────────────────────────────────────────
-# DISCORD CONFIG
-# ──────────────────────────────────────────────
-
-DISCORD_BOT_TOKEN = os.environ.get("DISCORD_BOT_TOKEN", "")
-DISCORD_CHANNEL_ID = os.environ.get("DISCORD_CHANNEL_ID", "")
-
-
-# ──────────────────────────────────────────────
-# VINTED CONFIG
-# ──────────────────────────────────────────────
+# ============================================================
+# CONFIG
+# ============================================================
 
 VINTED_DOMAIN = "www.vinted.co.uk"
-VINTED_BASE_URL = f"https://{VINTED_DOMAIN}"
+BASE_URL = f"https://{VINTED_DOMAIN}"
 
-# Optional GitHub Secret.
-#
-# If supplied, this should look something like:
-#
-# access_token_web=XXXX; refresh_token_web=XXXX; anon_id=XXXX
-#
-# Do NOT put your cookie directly into this source file.
-VINTED_COOKIE = os.environ.get("VINTED_COOKIE", "")
+SEARCHES_FILE = "vinted_searches.json"
+SEEN_FILE = "vinted_seen_ids.json"
 
-
-# ──────────────────────────────────────────────
-# FALLBACK SEARCHES
-# ──────────────────────────────────────────────
-
-FALLBACK_SEARCHES = [
-    {
-        "label": "Xbox Controller",
-        "search_text": "xbox controller",
-        "max_price": 15,
-        "min_price": None,
-        "size_ids": [],
-        "brand_ids": [],
-        "status_ids": [1, 2, 3, 4],
-        "order": "newest_first",
-        "exclude_words": [],
-        "enabled": True,
-    },
-]
-
+DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL")
+VINTED_COOKIE = os.getenv("VINTED_COOKIE", "")
 
 CHECK_INTERVAL = 5
-RUN_DURATION = 55
+RUN_TIME = 55
 
-CURRENCY_SYMBOL = "£"
-
-STATE_FILE = "vinted_seen_ids.json"
-SEARCHES_FILE = "vinted_searches.json"
-
-
-# ──────────────────────────────────────────────
-# CONDITION LABELS
-# ──────────────────────────────────────────────
-
-CONDITION_LABELS = {
-    1: "New without tags",
-    2: "Very good condition",
-    3: "Good condition",
-    4: "Satisfactory condition",
-    5: "Not specified",
-    6: "New with tags",
-}
-
-
-# ──────────────────────────────────────────────
-# HEADERS
-# ──────────────────────────────────────────────
-
-VINTED_HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/140.0.0.0 Safari/537.36"
-    ),
-    "Accept": "application/json, text/plain, */*",
-    "Accept-Language": "en-GB,en;q=0.9",
-    "Referer": f"{VINTED_BASE_URL}/",
-    "Origin": VINTED_BASE_URL,
-    "Sec-Fetch-Site": "same-origin",
-    "Sec-Fetch-Mode": "cors",
-    "Sec-Fetch-Dest": "empty",
-    "Cache-Control": "no-cache",
-    "Pragma": "no-cache",
-}
-
-
-COLOURS = [
-    0x09B1BA,
-    0xF5A623,
-    0x7ED321,
-    0xD0021B,
-    0x9B59B6,
-    0x3498DB,
-]
-
-
-# ──────────────────────────────────────────────
-# SESSION
-# ──────────────────────────────────────────────
-
-SESSION = requests.Session()
-
-SESSION.headers.update(
-    VINTED_HEADERS
+USER_AGENT = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/139.0.0.0 Safari/537.36"
 )
 
 
-# ──────────────────────────────────────────────
-# SEARCHES
-# ──────────────────────────────────────────────
+# ============================================================
+# SESSION
+# ============================================================
 
-def load_searches() -> list:
+session = requests.Session()
 
-    if os.path.exists(SEARCHES_FILE):
-
-        try:
-
-            with open(
-                SEARCHES_FILE,
-                encoding="utf-8",
-            ) as f:
-
-                all_searches = json.load(f)
-
-            enabled = [
-                s
-                for s in all_searches
-                if s.get("enabled", True)
-            ]
-
-            if enabled:
-
-                print(
-                    f" Loaded {len(enabled)} "
-                    f"search(es) from "
-                    f"{SEARCHES_FILE}"
-                )
-
-                return enabled
-
-        except Exception as e:
-
-            print(
-                f" [!] Could not read "
-                f"{SEARCHES_FILE}: {e}"
-            )
-
-    print(
-        " Using fallback searches"
-    )
-
-    return FALLBACK_SEARCHES
+session.headers.update({
+    "User-Agent": USER_AGENT,
+    "Accept": (
+        "text/html,application/xhtml+xml,application/xml;"
+        "q=0.9,image/avif,image/webp,*/*;q=0.8"
+    ),
+    "Accept-Language": "en-GB,en;q=0.9",
+    "Referer": BASE_URL + "/",
+    "Connection": "keep-alive",
+})
 
 
-# ──────────────────────────────────────────────
-# STATE
-# ──────────────────────────────────────────────
-
-def load_seen() -> dict:
-
-    if os.path.exists(STATE_FILE):
-
-        try:
-
-            with open(
-                STATE_FILE,
-                encoding="utf-8",
-            ) as f:
-
-                data = json.load(f)
-
-            if isinstance(
-                data,
-                dict,
-            ):
-
-                return data
-
-        except Exception as e:
-
-            print(
-                f" [!] Could not read "
-                f"{STATE_FILE}: {e}"
-            )
-
-    return {}
-
-
-def save_seen(seen: dict):
-
-    try:
-
-        with open(
-            STATE_FILE,
-            "w",
-            encoding="utf-8",
-        ) as f:
-
-            json.dump(
-                seen,
-                f,
-            )
-
-    except Exception as e:
-
-        print(
-            f" [!] Could not save "
-            f"{STATE_FILE}: {e}"
-        )
-
-
-# ──────────────────────────────────────────────
-# VINTED COOKIE HELPERS
-# ──────────────────────────────────────────────
-
-def cookie_header_from_session() -> str:
-
-    cookies = []
-
-    for cookie in SESSION.cookies:
-
-        cookies.append(
-            f"{cookie.name}={cookie.value}"
-        )
-
-    return "; ".join(
-        cookies
-    )
-
-
-def apply_manual_vinted_cookie():
-
-    if not VINTED_COOKIE:
-        return
-
-    # Keep the raw Cookie header as well as putting the
-    # individual cookies into the requests session.
-    SESSION.headers["Cookie"] = (
-        VINTED_COOKIE
-    )
-
-    for part in VINTED_COOKIE.split(";"):
-
-        part = part.strip()
-
-        if "=" not in part:
-            continue
-
-        name, value = part.split(
-            "=",
-            1,
-        )
-
-        name = name.strip()
-        value = value.strip()
-
-        if name:
-
-            SESSION.cookies.set(
-                name,
-                value,
-                domain=VINTED_DOMAIN,
-            )
-
-    print(
-        " [Vinted] Manual VINTED_COOKIE loaded."
-    )
-
-
-# ──────────────────────────────────────────────
-# VINTED SESSION
-# ──────────────────────────────────────────────
-
-def get_vinted_session_cookie():
-
+def bootstrap_session():
     """
-    Bootstrap the Vinted session.
-
-    The catalogue API requires Vinted's web authentication
-    cookie. A normal requests GET may not always be enough to
-    mint the cookie because Vinted can generate it through
-    client-side/browser flows.
-
-    Therefore:
-      1. Use VINTED_COOKIE if supplied.
-      2. Otherwise visit the homepage.
-      3. Preserve all cookies returned by Vinted.
+    Loads Vinted's catalogue page to establish cookies/session data.
     """
 
-    apply_manual_vinted_cookie()
-
-    if VINTED_COOKIE:
-
-        if (
-            "access_token_web="
-            in VINTED_COOKIE
-        ):
-
-            print(
-                " [Vinted] "
-                "access_token_web supplied."
-            )
-
-        return True
-
     try:
-
-        r = SESSION.get(
-            VINTED_BASE_URL + "/",
-            headers=VINTED_HEADERS,
-            timeout=15,
-            allow_redirects=True,
+        r = session.get(
+            f"{BASE_URL}/catalog",
+            timeout=20,
+            allow_redirects=True
         )
 
-        print(
-            f" [Vinted] Session bootstrap: "
-            f"HTTP {r.status_code}"
-        )
+        print(f" [Vinted] Session bootstrap: HTTP {r.status_code}")
 
-        # Explicitly rebuild the Cookie header from the session.
-        cookie_header = (
-            cookie_header_from_session()
-        )
+        if VINTED_COOKIE:
+            # Allow a manually supplied cookie to be used as well.
+            for part in VINTED_COOKIE.split(";"):
+                if "=" in part:
+                    name, value = part.strip().split("=", 1)
+                    session.cookies.set(
+                        name,
+                        value,
+                        domain=VINTED_DOMAIN
+                    )
 
-        if cookie_header:
+        token = None
 
-            SESSION.headers[
-                "Cookie"
-            ] = cookie_header
+        # Try to locate access_token_web in the returned HTML.
+        patterns = [
+            r'"access_token_web"\s*:\s*"([^"]+)"',
+            r'access_token_web["\']?\s*[:=]\s*["\']([^"\']+)',
+            r'access_token_web\\?["\']?\s*[:=]\s*["\']([^"\']+)',
+        ]
 
-        has_access_token = any(
-            cookie.name
-            == "access_token_web"
-            for cookie in SESSION.cookies
-        )
+        for pattern in patterns:
+            match = re.search(pattern, r.text)
+            if match:
+                token = match.group(1)
+                break
 
-        if has_access_token:
-
-            print(
-                " [Vinted] "
-                "access_token_web obtained."
-            )
-
+        if token:
+            session.headers.update({
+                "Authorization": f"Bearer {token}"
+            })
+            print(" [Vinted] access_token_web obtained.")
         else:
-
-            print(
-                " [Vinted] WARNING: "
-                "access_token_web was not "
-                "obtained by the plain HTTP "
-                "homepage request."
-            )
-
-            print(
-                " [Vinted] If the catalogue API "
-                "returns 404/401, add your "
-                "Vinted cookie as the "
-                "VINTED_COOKIE GitHub secret."
-            )
+            print(" [Vinted] No access_token_web found.")
 
         return True
 
     except requests.RequestException as e:
-
-        print(
-            f" [!] Vinted session bootstrap "
-            f"failed: {e}"
-        )
-
+        print(f" [!] Session bootstrap failed: {e}")
         return False
 
 
-# ──────────────────────────────────────────────
-# API PARAMS
-# ──────────────────────────────────────────────
+# ============================================================
+# LOAD SEARCH CONFIG
+# ============================================================
 
-def build_search_params(
-    search: dict,
-) -> dict:
-
-    params = {
-        "search_text": search.get(
-            "search_text",
-            "",
-        ),
-
-        "order": search.get(
-            "order",
-            "newest_first",
-        ),
-
-        "per_page": 40,
-
-        "page": 1,
-    }
-
-    if search.get(
-        "max_price"
-    ) is not None:
-
-        params[
-            "price_to"
-        ] = search[
-            "max_price"
-        ]
-
-    if search.get(
-        "min_price"
-    ) is not None:
-
-        params[
-            "price_from"
-        ] = search[
-            "min_price"
-        ]
-
-    if search.get(
-        "size_ids"
-    ):
-
-        params[
-            "size_ids[]"
-        ] = search[
-            "size_ids"
-        ]
-
-    if search.get(
-        "brand_ids"
-    ):
-
-        params[
-            "brand_ids[]"
-        ] = search[
-            "brand_ids"
-        ]
-
-    if search.get(
-        "status_ids"
-    ):
-
-        params[
-            "status_ids[]"
-        ] = search[
-            "status_ids"
-        ]
-
-    return params
-
-
-# ──────────────────────────────────────────────
-# VINTED LISTINGS
-# ──────────────────────────────────────────────
-
-def fetch_listings(
-    search: dict,
-) -> list:
-
-    params = build_search_params(
-        search
-    )
-
-    url = (
-        f"{VINTED_BASE_URL}"
-        "/api/v2/catalog/items"
-    )
-
-    # Make sure the current session cookies are sent.
-    if not VINTED_COOKIE:
-
-        cookie_header = (
-            cookie_header_from_session()
-        )
-
-        if cookie_header:
-
-            SESSION.headers[
-                "Cookie"
-            ] = cookie_header
-
+def load_searches():
     try:
+        with open(SEARCHES_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
 
-        r = SESSION.get(
-            url,
-            params=params,
-            headers=VINTED_HEADERS,
-            timeout=20,
-        )
+        if isinstance(data, dict):
+            searches = data.get("searches", data)
+        else:
+            searches = data
 
-        if r.status_code == 200:
-
-            try:
-
-                data = r.json()
-
-            except ValueError:
-
-                print(
-                    " [!] Vinted returned HTTP 200 "
-                    "but the response was not JSON."
-                )
-
-                return []
-
-            items = data.get(
-                "items",
-                [],
-            )
-
-            if not isinstance(
-                items,
-                list,
-            ):
-
-                return []
-
-            return items
-
-        # ------------------------------------------------------
-        # 401 / 403 / 404
-        #
-        # Do NOT blindly retry the same request.
-        #
-        # Refresh the Vinted session first.
-        # ------------------------------------------------------
-
-        if r.status_code in (
-            401,
-            403,
-            404,
-        ):
-
-            print(
-                f" [!] Vinted API returned "
-                f"{r.status_code}."
-            )
-
-            print(
-                " [!] Refreshing Vinted "
-                "session and retrying..."
-            )
-
-            # Remove an automatically-created Cookie header
-            # before rebuilding it.
-            if not VINTED_COOKIE:
-
-                SESSION.headers.pop(
-                    "Cookie",
-                    None,
-                )
-
-                SESSION.cookies.clear()
-
-                get_vinted_session_cookie()
-
-            else:
-
-                apply_manual_vinted_cookie()
-
-            if not VINTED_COOKIE:
-
-                cookie_header = (
-                    cookie_header_from_session()
-                )
-
-                if cookie_header:
-
-                    SESSION.headers[
-                        "Cookie"
-                    ] = cookie_header
-
-            r = SESSION.get(
-                url,
-                params=params,
-                headers=VINTED_HEADERS,
-                timeout=20,
-            )
-
-            if r.status_code == 200:
-
-                try:
-
-                    data = r.json()
-
-                except ValueError:
-
-                    print(
-                        " [!] Vinted returned "
-                        "HTTP 200 but "
-                        "non-JSON data."
-                    )
-
-                    return []
-
-                return data.get(
-                    "items",
-                    [],
-                )
-
-            print(
-                f" [!] Vinted API still "
-                f"returned HTTP "
-                f"{r.status_code}."
-            )
-
-            # Give useful diagnostics without dumping
-            # cookies/tokens into the GitHub log.
-            try:
-
-                data = r.json()
-
-                print(
-                    " [debug] Vinted response:"
-                    f" code={data.get('code')},"
-                    f" message_code="
-                    f"{data.get('message_code')}"
-                )
-
-            except Exception:
-
-                print(
-                    " [debug] Response was "
-                    f"{len(r.text)} characters."
-                )
-
-            return []
-
-        r.raise_for_status()
-
-        return []
-
-    except requests.HTTPError as e:
-
-        print(
-            f" [!] HTTP error: {e}"
-        )
-
-    except requests.RequestException as e:
-
-        print(
-            f" [!] Request error: {e}"
-        )
+        return searches
 
     except Exception as e:
+        print(f" [!] Failed to load searches: {e}")
+        return []
 
-        print(
-            f" [!] Unexpected Vinted "
-            f"error: {e}"
-        )
+
+# ============================================================
+# SEEN IDS
+# ============================================================
+
+def load_seen_ids():
+    try:
+        with open(SEEN_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        if isinstance(data, list):
+            return set(str(x) for x in data)
+
+        if isinstance(data, dict):
+            return set(str(x) for x in data.keys())
+
+    except Exception:
+        pass
+
+    return set()
+
+
+def save_seen_ids(seen):
+    try:
+        with open(SEEN_FILE, "w", encoding="utf-8") as f:
+            json.dump(
+                list(seen)[-10000:],
+                f,
+                indent=2
+            )
+    except Exception as e:
+        print(f" [!] Failed saving seen IDs: {e}")
+
+
+# ============================================================
+# SEARCH CONFIG HELPERS
+# ============================================================
+
+def get_search_value(search, *names, default=None):
+    if not isinstance(search, dict):
+        return default
+
+    for name in names:
+        if name in search:
+            return search[name]
+
+    return default
+
+
+def normalise_words(value):
+    if value is None:
+        return []
+
+    if isinstance(value, str):
+        return [
+            x.strip().lower()
+            for x in re.split(r"[,|\n]", value)
+            if x.strip()
+        ]
+
+    if isinstance(value, list):
+        return [
+            str(x).strip().lower()
+            for x in value
+            if str(x).strip()
+        ]
 
     return []
 
 
-# ──────────────────────────────────────────────
-# USER PROFILE
-# ──────────────────────────────────────────────
+# ============================================================
+# API SEARCH
+# ============================================================
 
-def fetch_user_profile(
-    user_id,
-) -> dict:
-
+def api_search(search):
     """
-    Fetch user profile to get feedback rating.
+    Try Vinted's internal API first.
 
-    This is kept from the original bot because the original
-    Discord embed uses the seller's reputation.
+    This is retained because it may still work for some sessions/IPs.
+    If Vinted returns 404/403/challenge HTML, the caller falls back
+    to the catalogue page.
     """
 
-    if not user_id:
-        return {}
-
-    url = (
-        f"{VINTED_BASE_URL}"
-        f"/api/v2/users/{user_id}"
+    search_text = get_search_value(
+        search,
+        "search_text",
+        "query",
+        "search",
+        "name",
+        default=""
     )
 
-    try:
+    params = {
+        "search_text": search_text,
+        "order": "newest_first",
+        "per_page": 40,
+        "page": 1,
+    }
 
-        r = SESSION.get(
-            url,
-            headers=VINTED_HEADERS,
-            timeout=10,
-        )
-
-        if r.status_code == 200:
-
-            data = r.json()
-
-            return data.get(
-                "user",
-                {},
-            )
-
-    except Exception:
-        pass
-
-    return {}
-
-
-# ──────────────────────────────────────────────
-# ITEM DETAILS
-# ──────────────────────────────────────────────
-
-def fetch_item_details(
-    item_id,
-) -> dict:
-
-    """
-    Fetch complete item information.
-
-    The catalogue result normally already contains everything
-    required. This is retained as a fallback/enrichment step.
-    """
-
-    if not item_id:
-        return {}
-
-    url = (
-        f"{VINTED_BASE_URL}"
-        f"/api/v2/items/{item_id}"
+    price_to = get_search_value(
+        search,
+        "price_to",
+        "max_price",
+        "maxPrice"
     )
 
-    try:
+    if price_to is not None and str(price_to) != "":
+        try:
+            params["price_to"] = int(float(price_to))
+        except Exception:
+            pass
 
-        r = SESSION.get(
-            url,
-            headers=VINTED_HEADERS,
-            timeout=10,
+    status_ids = get_search_value(
+        search,
+        "status_ids",
+        "statuses",
+        default=[1, 2, 3, 4]
+    )
+
+    if isinstance(status_ids, list):
+        for status in status_ids:
+            params.setdefault("status_ids[]", []).append(status)
+
+    try:
+        r = session.get(
+            f"{BASE_URL}/api/v2/catalog/items",
+            params=params,
+            headers={
+                "Accept": "application/json, text/plain, */*",
+                "X-Requested-With": "XMLHttpRequest",
+                "Referer": f"{BASE_URL}/catalog",
+            },
+            timeout=20,
         )
 
-        if r.status_code == 200:
-
-            data = r.json()
-
-            return data.get(
-                "item",
-                data,
+        if r.status_code != 200:
+            print(
+                f" [!] Vinted API returned HTTP {r.status_code}."
             )
 
+            # A ~9KB response is commonly the HTML challenge/error
+            # page rather than the requested JSON.
+            return None
+
+        content_type = r.headers.get("content-type", "").lower()
+
+        if "json" not in content_type:
+            try:
+                return r.json()
+            except Exception:
+                return None
+
+        return r.json()
+
+    except requests.RequestException as e:
+        print(f" [!] Vinted API request failed: {e}")
+        return None
+
+    except ValueError:
+        print(" [!] Vinted API returned invalid JSON.")
+        return None
+
+
+# ============================================================
+# HTML CATALOGUE FALLBACK
+# ============================================================
+
+def extract_next_data(text):
+    """
+    Extract Next.js __NEXT_DATA__ JSON if present.
+    """
+
+    soup = BeautifulSoup(text, "html.parser")
+
+    script = soup.find(
+        "script",
+        id="__NEXT_DATA__"
+    )
+
+    if not script:
+        return None
+
+    try:
+        return json.loads(script.string or script.get_text())
     except Exception:
-        pass
-
-    return {}
+        return None
 
 
-# ──────────────────────────────────────────────
-# EXCLUDE WORDS
-# ──────────────────────────────────────────────
-
-def matches_exclude_words(
-    item: dict,
-    exclude_words: list,
-) -> bool:
-
+def recursively_find_items(obj):
     """
-    Returns True if the item title contains any excluded word.
-
-    This is deliberately applied BEFORE the listing is added
-    to the alert pipeline.
+    Find dictionaries that look like Vinted catalogue items
+    anywhere inside a JSON structure.
     """
 
-    if not exclude_words:
-        return False
+    results = []
 
-    title = (
-        item.get("title")
-        or ""
-    ).lower()
+    if isinstance(obj, dict):
 
-    for word in exclude_words:
-
-        word = str(
-            word
-        ).lower().strip()
-
+        # A normal Vinted item has an id and title.
         if (
-            word
-            and word in title
+            ("id" in obj)
+            and (
+                "title" in obj
+                or "photo" in obj
+                or "photos" in obj
+            )
         ):
+            results.append(obj)
 
+        for value in obj.values():
+            results.extend(recursively_find_items(value))
+
+    elif isinstance(obj, list):
+
+        for value in obj:
+            results.extend(recursively_find_items(value))
+
+    return results
+
+
+def parse_price(value):
+    if value is None:
+        return None
+
+    if isinstance(value, (int, float)):
+        return float(value)
+
+    text = str(value)
+
+    match = re.search(
+        r"(\d+(?:[.,]\d{1,2})?)",
+        text
+    )
+
+    if not match:
+        return None
+
+    try:
+        return float(
+            match.group(1).replace(",", ".")
+        )
+    except Exception:
+        return None
+
+
+def find_first_value(item, keys):
+    for key in keys:
+        value = item.get(key)
+
+        if value not in (None, ""):
+            return value
+
+    return None
+
+
+def normalise_item(item):
+    """
+    Convert the various formats Vinted may return into one
+    consistent structure used by the filtering + Discord code.
+    """
+
+    item_id = find_first_value(
+        item,
+        ["id", "item_id"]
+    )
+
+    if item_id is None:
+        return None
+
+    title = find_first_value(
+        item,
+        [
+            "title",
+            "name",
+        ]
+    ) or "Vinted listing"
+
+    price = find_first_value(
+        item,
+        [
+            "price",
+            "price_numeric",
+            "total_item_price",
+        ]
+    )
+
+    if isinstance(price, dict):
+        price = find_first_value(
+            price,
+            ["amount", "value"]
+        )
+
+    price = parse_price(price)
+
+    url = find_first_value(
+        item,
+        [
+            "url",
+            "item_url",
+        ]
+    )
+
+    if not url:
+        url = f"{BASE_URL}/items/{item_id}"
+
+    photo = None
+
+    photo_data = find_first_value(
+        item,
+        [
+            "photo",
+            "photos",
+        ]
+    )
+
+    if isinstance(photo_data, dict):
+        photo = find_first_value(
+            photo_data,
+            [
+                "url",
+                "full_size_url",
+                "high_resolution_url",
+                "thumbnails",
+            ]
+        )
+
+    elif isinstance(photo_data, list) and photo_data:
+        first = photo_data[0]
+
+        if isinstance(first, dict):
+            photo = find_first_value(
+                first,
+                [
+                    "url",
+                    "full_size_url",
+                    "high_resolution_url",
+                ]
+            )
+        elif isinstance(first, str):
+            photo = first
+
+    elif isinstance(photo_data, str):
+        photo = photo_data
+
+    if isinstance(photo, list):
+        photo = photo[0] if photo else None
+
+    # Other common photo fields.
+    if not photo:
+        photo = find_first_value(
+            item,
+            [
+                "photo_url",
+                "image_url",
+                "thumbnail",
+            ]
+        )
+
+    seller = (
+        item.get("user")
+        or item.get("seller")
+        or {}
+    )
+
+    if not isinstance(seller, dict):
+        seller = {}
+
+    seller_name = find_first_value(
+        seller,
+        [
+            "login",
+            "username",
+            "name",
+        ]
+    )
+
+    seller_id = find_first_value(
+        seller,
+        ["id", "user_id"]
+    )
+
+    rating = find_first_value(
+        seller,
+        [
+            "feedback_reputation",
+            "rating",
+            "rating_value",
+        ]
+    )
+
+    if isinstance(rating, dict):
+        rating = find_first_value(
+            rating,
+            [
+                "value",
+                "rating",
+            ]
+        )
+
+    item.update({
+        "_id": str(item_id),
+        "_title": str(title),
+        "_price": price,
+        "_url": url,
+        "_photo": photo,
+        "_seller_name": seller_name,
+        "_seller_id": seller_id,
+        "_rating": rating,
+    })
+
+    return item
+
+
+def html_catalog_search(search):
+    """
+    Public catalogue fallback.
+
+    This does NOT depend on /api/v2/catalog/items.
+    """
+
+    search_text = get_search_value(
+        search,
+        "search_text",
+        "query",
+        "search",
+        "name",
+        default=""
+    )
+
+    params = {
+        "search_text": search_text,
+        "order": "newest_first",
+        "page": 1,
+    }
+
+    price_to = get_search_value(
+        search,
+        "price_to",
+        "max_price",
+        "maxPrice"
+    )
+
+    if price_to is not None and str(price_to) != "":
+        try:
+            params["price_to"] = int(float(price_to))
+        except Exception:
+            pass
+
+    status_ids = get_search_value(
+        search,
+        "status_ids",
+        "statuses",
+        default=[1, 2, 3, 4]
+    )
+
+    if isinstance(status_ids, list):
+        params["status_ids[]"] = status_ids
+
+    url = (
+        f"{BASE_URL}/catalog?"
+        + urlencode(params, doseq=True)
+    )
+
+    try:
+        r = session.get(
+            url,
+            headers={
+                "Accept": (
+                    "text/html,application/xhtml+xml,"
+                    "application/xml;q=0.9,*/*;q=0.8"
+                ),
+                "Referer": BASE_URL + "/",
+            },
+            timeout=25,
+        )
+
+        print(
+            f" [Vinted] Catalogue fallback: HTTP {r.status_code}"
+        )
+
+        if r.status_code != 200:
+            return []
+
+        text = r.text
+
+        items = []
+
+        # ----------------------------------------------------
+        # Method 1: Next.js JSON
+        # ----------------------------------------------------
+
+        next_data = extract_next_data(text)
+
+        if next_data:
+            items.extend(
+                recursively_find_items(next_data)
+            )
+
+        # ----------------------------------------------------
+        # Method 2: Search for JSON blobs containing IDs
+        # ----------------------------------------------------
+
+        if not items:
+
+            patterns = [
+                r'"id"\s*:\s*(\d+).*?"title"\s*:\s*"([^"]+)"',
+                r'"title"\s*:\s*"([^"]+)".*?"id"\s*:\s*(\d+)',
+            ]
+
+            for pattern in patterns:
+                for match in re.finditer(
+                    pattern,
+                    text,
+                    re.S
+                ):
+                    groups = match.groups()
+
+                    if len(groups) != 2:
+                        continue
+
+                    if groups[0].isdigit():
+                        item_id = groups[0]
+                        title = groups[1]
+                    else:
+                        title = groups[0]
+                        item_id = groups[1]
+
+                    items.append({
+                        "id": item_id,
+                        "title": html.unescape(title),
+                    })
+
+        # ----------------------------------------------------
+        # Method 3: HTML item links
+        # ----------------------------------------------------
+
+        if not items:
+
+            soup = BeautifulSoup(
+                text,
+                "html.parser"
+            )
+
+            seen = set()
+
+            for a in soup.find_all(
+                "a",
+                href=True
+            ):
+
+                href = a.get("href", "")
+
+                match = re.search(
+                    r"/items/(\d+)",
+                    href
+                )
+
+                if not match:
+                    continue
+
+                item_id = match.group(1)
+
+                if item_id in seen:
+                    continue
+
+                seen.add(item_id)
+
+                title = (
+                    a.get_text(
+                        " ",
+                        strip=True
+                    )
+                    or "Vinted listing"
+                )
+
+                img = a.find("img")
+
+                photo = None
+
+                if img:
+                    photo = (
+                        img.get("src")
+                        or img.get("data-src")
+                    )
+
+                items.append({
+                    "id": item_id,
+                    "title": title,
+                    "url": (
+                        href
+                        if href.startswith("http")
+                        else BASE_URL + href
+                    ),
+                    "photo_url": photo,
+                })
+
+        # Remove duplicates.
+        unique = {}
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+
+            item_id = item.get("id")
+
+            if item_id is not None:
+                unique[str(item_id)] = item
+
+        return [
+            normalise_item(item)
+            for item in unique.values()
+            if normalise_item(item)
+        ]
+
+    except requests.RequestException as e:
+        print(
+            f" [!] Catalogue request failed: {e}"
+        )
+        return []
+
+
+# ============================================================
+# UNIFIED SEARCH
+# ============================================================
+
+def fetch_listings(search):
+    """
+    API first, catalogue fallback second.
+    """
+
+    data = api_search(search)
+
+    if data is not None:
+
+        if isinstance(data, dict):
+            raw_items = (
+                data.get("items")
+                or data.get("catalog_items")
+                or data.get("data")
+                or []
+            )
+        elif isinstance(data, list):
+            raw_items = data
+        else:
+            raw_items = []
+
+        if isinstance(raw_items, dict):
+            raw_items = (
+                raw_items.get("items")
+                or []
+            )
+
+        listings = []
+
+        for item in raw_items:
+
+            if not isinstance(item, dict):
+                continue
+
+            normalised = normalise_item(item)
+
+            if normalised:
+                listings.append(normalised)
+
+        if listings:
+            return listings
+
+    # API failed / blocked.
+    print(" [Vinted] Falling back to catalogue HTML...")
+
+    bootstrap_session()
+
+    return html_catalog_search(search)
+
+
+# ============================================================
+# BLOCK WORD FILTERING
+# ============================================================
+
+def listing_text(item):
+    parts = []
+
+    for key in [
+        "_title",
+        "title",
+        "name",
+        "description",
+    ]:
+
+        value = item.get(key)
+
+        if value:
+            parts.append(str(value))
+
+    return " ".join(parts).lower()
+
+
+def is_blocked(item, search):
+    text = listing_text(item)
+
+    block_words = normalise_words(
+        get_search_value(
+            search,
+            "exclude_words",
+            "block_words",
+            "blocked_words",
+            "exclude",
+            "excludeWords",
+            default=[]
+        )
+    )
+
+    for word in block_words:
+        if word and word in text:
             return True
 
     return False
 
 
-# ──────────────────────────────────────────────
-# DISCORD HELPERS
-# ──────────────────────────────────────────────
+# ============================================================
+# PRICE FILTER
+# ============================================================
 
-def time_ago(
-    value,
-) -> str:
+def passes_price(item, search):
 
-    if not value:
-        return "Unknown"
+    price = item.get("_price")
 
-    ts = None
+    max_price = get_search_value(
+        search,
+        "price_to",
+        "max_price",
+        "maxPrice"
+    )
+
+    min_price = get_search_value(
+        search,
+        "price_from",
+        "min_price",
+        "minPrice"
+    )
+
+    if price is None:
+        # If we don't know the price, don't reject it here.
+        return True
 
     try:
+        price = float(price)
+    except Exception:
+        return True
 
-        ts = int(
-            float(
-                str(value)
-            )
+    if max_price is not None:
+        try:
+            if price > float(max_price):
+                return False
+        except Exception:
+            pass
+
+    if min_price is not None:
+        try:
+            if price < float(min_price):
+                return False
+        except Exception:
+            pass
+
+    return True
+
+
+# ============================================================
+# SEARCH MATCHING
+# ============================================================
+
+def passes_search(item, search):
+
+    search_text = get_search_value(
+        search,
+        "search_text",
+        "query",
+        "search",
+        "name",
+        default=""
+    )
+
+    if not search_text:
+        return True
+
+    words = [
+        x.strip().lower()
+        for x in re.split(
+            r"\s+",
+            str(search_text)
+        )
+        if x.strip()
+    ]
+
+    title = listing_text(item)
+
+    # All search words must appear.
+    for word in words:
+        if word not in title:
+            return False
+
+    return True
+
+
+# ============================================================
+# USER PROFILE
+# ============================================================
+
+def fetch_user_profile(user_id):
+
+    if not user_id:
+        return {}
+
+    try:
+        r = session.get(
+            f"{BASE_URL}/api/v2/users/{user_id}",
+            headers={
+                "Accept": "application/json, text/plain, */*",
+                "Referer": BASE_URL + "/",
+            },
+            timeout=15,
         )
 
-    except (
-        TypeError,
-        ValueError,
-    ):
+        if r.status_code != 200:
+            return {}
 
+        data = r.json()
+
+        if isinstance(data, dict):
+            return (
+                data.get("user")
+                or data
+            )
+
+    except Exception:
         pass
 
-    if ts is None:
+    return {}
 
+
+# ============================================================
+# DISCORD
+# ============================================================
+
+def discord_timestamp(value=None):
+
+    if value:
         try:
+            if isinstance(value, (int, float)):
+                return int(value)
 
-            from datetime import (
-                timezone as tz
+            parsed = datetime.fromisoformat(
+                str(value).replace(
+                    "Z",
+                    "+00:00"
+                )
             )
 
-            s = str(
-                value
-            )[:19]
-
-            dt = datetime.strptime(
-                s,
-                "%Y-%m-%dT%H:%M:%S",
-            ).replace(
-                tzinfo=tz.utc
-            )
-
-            ts = int(
-                dt.timestamp()
+            return int(
+                parsed.timestamp()
             )
 
         except Exception:
+            pass
 
-            return "Unknown"
-
-    diff = (
-        int(time.time())
-        - ts
-    )
-
-    if diff < 0:
-        return "just now"
-
-    if diff < 60:
-
-        return (
-            f"{diff} second"
-            f"{'s' if diff != 1 else ''} ago"
-        )
-
-    if diff < 3600:
-
-        m = diff // 60
-
-        return (
-            f"{m} minute"
-            f"{'s' if m != 1 else ''} ago"
-        )
-
-    if diff < 86400:
-
-        h = diff // 3600
-
-        return (
-            f"{h} hour"
-            f"{'s' if h != 1 else ''} ago"
-        )
-
-    d = diff // 86400
-
-    return (
-        f"{d} day"
-        f"{'s' if d != 1 else ''} ago"
+    return int(
+        datetime.now(
+            timezone.utc
+        ).timestamp()
     )
 
 
-def star_rating(
-    reputation,
-) -> str:
-
-    if reputation is None:
-        return "No ratings"
-
-    try:
-
-        score = float(
-            reputation
-        )
-
-        stars = round(
-            score * 5
-        )
-
-        stars = max(
-            0,
-            min(
-                5,
-                stars,
-            ),
-        )
-
-        return (
-            "⭐" * stars
-            + "✩" * (5 - stars)
-        )
-
-    except (
-        TypeError,
-        ValueError,
-    ):
-
-        return "No ratings"
-
-
-# ──────────────────────────────────────────────
-# ITEM URL
-# ──────────────────────────────────────────────
-
-def get_item_url(
-    item: dict,
-) -> str:
-
-    url = item.get(
-        "url",
-        "",
-    )
-
-    if url and not url.startswith(
-        "http"
-    ):
-
-        url = (
-            f"{VINTED_BASE_URL}"
-            f"{url}"
-        )
-
-    # Some Vinted responses provide a "path"
-    # rather than a full URL.
-    if not url:
-
-        path = item.get(
-            "path",
-            "",
-        )
-
-        if path:
-
-            if path.startswith(
-                "http"
-            ):
-
-                url = path
-
-            else:
-
-                url = (
-                    f"{VINTED_BASE_URL}"
-                    f"{path}"
-                )
-
-    # Final fallback.
-    if not url and item.get(
-        "id"
-    ):
-
-        url = (
-            f"{VINTED_BASE_URL}"
-            f"/items/{item['id']}"
-        )
-
-    return url
-
-
-# ──────────────────────────────────────────────
-# DISCORD PAYLOAD
-# ──────────────────────────────────────────────
-
-def build_payload(
-    label: str,
-    item: dict,
-    colour: int,
-) -> dict:
-
-    item_url = get_item_url(
-        item
-    )
-
-    item_id = item.get(
-        "id",
-        "",
-    )
-
-    # ----------------------------------------------------------
-    # Seller profile enrichment
-    # ----------------------------------------------------------
-
-    user = item.get(
-        "user",
-        {},
-    )
-
-    if not isinstance(
-        user,
-        dict,
-    ):
-
-        user = {}
-
-    user_id = user.get(
-        "id"
-    )
-
-    if user_id:
-
-        user_profile = (
-            fetch_user_profile(
-                user_id
-            )
-        )
-
-        if user_profile:
-
-            user = {
-                **user,
-                **user_profile,
-            }
-
-            item["user"] = user
-
-    # ----------------------------------------------------------
-    # Seller
-    # ----------------------------------------------------------
-
-    seller = (
-        user.get(
-            "login"
-        )
-        or user.get(
-            "username"
-        )
-        or "Unknown seller"
-    )
-
-    seller_id = user.get(
-        "id"
-    )
-
-    seller_url = (
-        f"{VINTED_BASE_URL}"
-        f"/member/{seller_id}"
-        if seller_id
-        else item_url
-    )
-
-    # ----------------------------------------------------------
-    # Price
-    # ----------------------------------------------------------
-
-    price_obj = item.get(
-        "price",
-        {},
-    )
-
-    if isinstance(
-        price_obj,
-        dict,
-    ):
-
-        amount = (
-            price_obj.get(
-                "amount"
-            )
-            or price_obj.get(
-                "value"
-            )
-            or "?"
-        )
-
-    else:
-
-        amount = (
-            price_obj
-            or "?"
-        )
-
-    price_str = (
-        f"{CURRENCY_SYMBOL}"
-        f"{amount}"
-    )
-
-    # ----------------------------------------------------------
-    # Brand / size
-    # ----------------------------------------------------------
-
-    brand = (
-        item.get(
-            "brand_title"
-        )
-        or item.get(
-            "brand"
-        )
-        or "—"
-    )
-
-    if isinstance(
-        brand,
-        dict,
-    ):
-
-        brand = (
-            brand.get(
-                "title"
-            )
-            or brand.get(
-                "name"
-            )
-            or "—"
-        )
-
-    size = (
-        item.get(
-            "size_title"
-        )
-        or item.get(
-            "size"
-        )
-        or "—"
-    )
-
-    if isinstance(
-        size,
-        dict,
-    ):
-
-        size = (
-            size.get(
-                "title"
-            )
-            or size.get(
-                "name"
-            )
-            or "—"
-        )
-
-    # ----------------------------------------------------------
-    # Condition
-    # ----------------------------------------------------------
-
-    raw_status = (
-        item.get(
-            "status"
-        )
-        or ""
-    )
-
-    status_id = item.get(
-        "status_id"
-    )
-
-    try:
-
-        status_id = int(
-            status_id
-        )
-
-    except (
-        TypeError,
-        ValueError,
-    ):
-
-        status_id = None
-
-    condition = (
-        CONDITION_LABELS.get(
-            status_id,
-            raw_status,
-        )
-        if status_id
-        else (
-            raw_status
-            or "—"
-        )
-    )
-
-    # ----------------------------------------------------------
-    # Published
-    # ----------------------------------------------------------
-
-    created_at = (
-        item.get(
-            "created_at_ts"
-        )
-        or item.get(
-            "created_at"
-        )
-        or item.get(
-            "updated_at_ts"
-        )
-        or item.get(
-            "updated_at"
-        )
-        or (
-            item.get(
-                "item_box"
-            )
-            or {}
-        ).get(
-            "created_at_ts"
-        )
-        or (
-            item.get(
-                "item_box"
-            )
-            or {}
-        ).get(
-            "created_at"
-        )
-    )
-
-    if created_at:
-
-        try:
-
-            unix_ts = int(
-                float(
-                    str(
-                        created_at
-                    )
-                )
-            )
-
-        except (
-            TypeError,
-            ValueError,
-        ):
-
-            try:
-
-                from datetime import (
-                    timezone as tz
-                )
-
-                s = str(
-                    created_at
-                )[:19]
-
-                dt = datetime.strptime(
-                    s,
-                    "%Y-%m-%dT%H:%M:%S",
-                ).replace(
-                    tzinfo=tz.utc
-                )
-
-                unix_ts = int(
-                    dt.timestamp()
-                )
-
-            except Exception:
-
-                unix_ts = int(
-                    time.time()
-                )
-
-    else:
-
-        unix_ts = int(
-            time.time()
-        )
-
-    published = (
-        f"<t:{unix_ts}:R>"
-    )
-
-    # ----------------------------------------------------------
-    # Feedback
-    # ----------------------------------------------------------
-
-    feedback_score = (
-        user.get(
-            "feedback_reputation"
-        )
-        or user.get(
-            "feedback_score"
-        )
-        or item.get(
-            "feedback_reputation"
-        )
-    )
-
-    feedback_count = (
-        user.get(
-            "positive_feedback_count"
-        )
-        or user.get(
-            "feedback_count"
-        )
-        or user.get(
-            "feedback_count_total"
-        )
-        or 0
-    )
-
-    stars = star_rating(
-        feedback_score
-    )
-
-    feedback_str = (
-        f"{stars} "
-        f"({feedback_count})"
-    )
-
-    # ----------------------------------------------------------
-    # Photo
-    # ----------------------------------------------------------
-
-    photos = item.get(
-        "photos",
-        [],
-    )
-
-    image_url = None
-
-    if isinstance(
-        photos,
-        list,
-    ) and photos:
-
-        first_photo = photos[0]
-
-        if isinstance(
-            first_photo,
-            dict,
-        ):
-
-            image_url = (
-                first_photo.get(
-                    "full_size_url"
-                )
-                or first_photo.get(
-                    "url"
-                )
-            )
-
-            if not image_url:
-
-                thumbnails = (
-                    first_photo.get(
-                        "thumbnails"
-                    )
-                    or []
-                )
-
-                if (
-                    isinstance(
-                        thumbnails,
-                        list,
-                    )
-                    and thumbnails
-                ):
-
-                    for thumbnail in reversed(
-                        thumbnails
-                    ):
-
-                        if not isinstance(
-                            thumbnail,
-                            dict,
-                        ):
-
-                            continue
-
-                        image_url = (
-                            thumbnail.get(
-                                "url"
-                            )
-                        )
-
-                        if image_url:
-                            break
-
-    # Newer/alternate response format.
-    if not image_url:
-
-        photo = item.get(
-            "photo"
-        )
-
-        if isinstance(
-            photo,
-            dict,
-        ):
-
-            image_url = (
-                photo.get(
-                    "full_size_url"
-                )
-                or photo.get(
-                    "url"
-                )
-            )
-
-    if not image_url:
-
-        image_url = (
-            item.get(
-                "photo_url"
-            )
-            or item.get(
-                "image_url"
-            )
-        )
-
-    # ----------------------------------------------------------
-    # Buy / offer URLs
-    # ----------------------------------------------------------
-
-    buy_url = (
-        f"{VINTED_BASE_URL}"
-        f"/transaction/buy/item/"
-        f"{item_id}"
-        if item_id
-        else item_url
-    )
-
-    negotiate_url = (
-        f"{VINTED_BASE_URL}"
-        f"/items/{item_id}/make_offer"
-        if item_id
-        else item_url
-    )
-
-    # Keep these variables because the original bot created them.
-    # The Discord message itself continues to use the listing URL.
-    details_url = item_url
-
-    # ----------------------------------------------------------
-    # Embed
-    # ----------------------------------------------------------
-
-    embed = {
-        "author": {
-            "name": f"👤 {seller}",
-            "url": seller_url,
-        },
-
-        "title": item.get(
-            "title",
-            "New listing",
-        ),
-
-        "url": details_url,
-
-        "color": colour,
-
-        "fields": [
-            {
-                "name": "⏳ Published",
-                "value": published,
-                "inline": True,
-            },
-
-            {
-                "name": "🏷️ Brand",
-                "value": str(brand),
-                "inline": True,
-            },
-
-            {
-                "name": "📐 Size",
-                "value": str(size),
-                "inline": True,
-            },
-
-            {
-                "name": "⭐ Feedbacks",
-                "value": feedback_str,
-                "inline": True,
-            },
-
-            {
-                "name": "💎 Status",
-                "value": str(condition),
-                "inline": True,
-            },
-
-            {
-                "name": "💰 Price",
-                "value": price_str,
-                "inline": True,
-            },
-        ],
-
-        "footer": {
-            "text": (
-                f"🔍 Search: {label}"
-            ),
-        },
-
-        "timestamp": (
-            datetime.now(
-                timezone.utc
-            ).isoformat()
-        ),
-    }
-
-    if image_url:
-
-        embed[
-            "image"
-        ] = {
-            "url": image_url
-        }
-
-    # ----------------------------------------------------------
-    # Discord button
-    # ----------------------------------------------------------
-
-    components = [
-        {
-            "type": 1,
-
-            "components": [
-                {
-                    "type": 2,
-                    "style": 5,
-                    "label": "View Listing",
-
-                    "emoji": {
-                        "name": "🔗"
-                    },
-
-                    "url": details_url,
-                }
-            ],
-        }
-    ]
-
-    return {
-        "embeds": [
-            embed
-        ],
-
-        "components": components,
-    }
-
-
-# ──────────────────────────────────────────────
-# DISCORD
-# ──────────────────────────────────────────────
-
-def send_discord(
-    label: str,
-    item: dict,
-    colour: int,
-    channel_id: str = None,
-):
-
-    target_channel = (
-        channel_id
-        if channel_id
-        else DISCORD_CHANNEL_ID
-    )
-
-    if not target_channel:
-
-        print(
-            f" [!] No channel ID "
-            f"configured for '{label}' "
-            f"— skipping"
-        )
-
-        return
-
-    payload = build_payload(
-        label,
-        item,
-        colour,
+def build_discord_payload(item, search):
+
+    title = (
+        item.get("_title")
+        or item.get("title")
+        or "New Vinted listing"
     )
 
     url = (
-        "https://discord.com/api/v10/"
-        f"channels/{target_channel}/messages"
+        item.get("_url")
+        or f"{BASE_URL}/items/{item.get('_id')}"
     )
 
-    headers = {
-        "Authorization": (
-            f"Bot {DISCORD_BOT_TOKEN}"
-        ),
+    price = item.get("_price")
 
-        "Content-Type": (
-            "application/json"
-        ),
+    if price is not None:
+        price_text = f"£{float(price):.2f}"
+    else:
+        price_text = "Unknown"
+
+    seller = (
+        item.get("_seller_name")
+        or "Unknown seller"
+    )
+
+    rating = item.get("_rating")
+
+    if rating is None:
+        rating_text = "Unknown"
+    else:
+        rating_text = str(rating)
+
+    embed = {
+        "title": title[:256],
+        "url": url,
+        "fields": [
+            {
+                "name": "💷 Price",
+                "value": price_text,
+                "inline": True,
+            },
+            {
+                "name": "👤 Seller",
+                "value": str(seller)[:1024],
+                "inline": True,
+            },
+            {
+                "name": "⭐ Rating",
+                "value": rating_text[:1024],
+                "inline": True,
+            },
+        ],
+        "timestamp": datetime.now(
+            timezone.utc
+        ).isoformat(),
     }
+
+    photo = item.get("_photo")
+
+    if photo:
+        embed["image"] = {
+            "url": photo
+        }
+
+    payload = {
+        "embeds": [embed],
+        "components": [
+            {
+                "type": 1,
+                "components": [
+                    {
+                        "type": 2,
+                        "style": 5,
+                        "label": "View Listing",
+                        "url": url,
+                    }
+                ],
+            }
+        ],
+    }
+
+    return payload
+
+
+def send_to_discord(item, search):
+
+    if not DISCORD_WEBHOOK_URL:
+        print(
+            " [!] DISCORD_WEBHOOK_URL is not configured."
+        )
+        return False
+
+    payload = build_discord_payload(
+        item,
+        search
+    )
 
     try:
 
         r = requests.post(
-            url,
-            headers=headers,
+            DISCORD_WEBHOOK_URL,
             json=payload,
-            timeout=10,
+            timeout=20,
         )
 
-        r.raise_for_status()
-
-    except requests.HTTPError as e:
-
-        status = (
-            e.response.status_code
-            if e.response is not None
-            else "?"
-        )
-
-        text = (
-            e.response.text
-            if e.response is not None
-            else ""
-        )
+        if 200 <= r.status_code < 300:
+            return True
 
         print(
-            f" [!] Discord error "
-            f"{status}: {text}"
+            f" [!] Discord returned HTTP {r.status_code}: "
+            f"{r.text[:500]}"
         )
 
     except requests.RequestException as e:
-
         print(
-            f" [!] Discord error: {e}"
+            f" [!] Discord request failed: {e}"
         )
 
-
-# ──────────────────────────────────────────────
-# VALIDATION
-# ──────────────────────────────────────────────
-
-def validate():
-
-    errors = []
-
-    if not DISCORD_BOT_TOKEN:
-
-        errors.append(
-            "DISCORD_BOT_TOKEN "
-            "secret is missing"
-        )
-
-    if not DISCORD_CHANNEL_ID:
-
-        errors.append(
-            "DISCORD_CHANNEL_ID "
-            "secret is missing"
-        )
-
-    if errors:
-
-        print(
-            "=" * 55
-        )
-
-        for e in errors:
-
-            print(
-                f" ERROR: {e}"
-            )
-
-        print(
-            "=" * 55
-        )
-
-        raise SystemExit(1)
+    return False
 
 
-# ──────────────────────────────────────────────
-# MAIN
-# ──────────────────────────────────────────────
+# ============================================================
+# MAIN CHECK
+# ============================================================
 
-def run():
-
-    validate()
+def check_all_searches(seen):
 
     searches = load_searches()
 
     if not searches:
-
-        print(
-            "No searches configured "
-            "— nothing to do."
-        )
-
+        print(" [!] No searches configured.")
         return
 
-    print(
-        "=" * 55
-    )
+    for search in searches:
 
-    print(
-        " Vinted -> Discord Alert Bot"
-    )
+        try:
 
-    print(
-        f" Checking every "
-        f"{CHECK_INTERVAL}s "
-        f"for {RUN_DURATION}s"
-    )
+            listings = fetch_listings(search)
 
-    print(
-        "=" * 55
-    )
+            if not listings:
+                continue
 
-    for s in searches:
+            for item in listings:
 
-        excl = s.get(
-            "exclude_words",
-            [],
-        )
+                item_id = item.get("_id")
 
-        excl_str = (
-            f" | exclude: "
-            f"{', '.join(excl)}"
-            if excl
-            else ""
-        )
-
-        ch_str = (
-            f" | channel: "
-            f"{s['channel_id']}"
-            if s.get(
-                "channel_id"
-            )
-            else (
-                " | channel: default "
-                f"({DISCORD_CHANNEL_ID})"
-            )
-        )
-
-        print(
-            f" * {s['label']}"
-            f"{excl_str}"
-            f"{ch_str}"
-        )
-
-    print()
-
-    # Bootstrap Vinted before searching.
-    get_vinted_session_cookie()
-
-    seen = load_seen()
-
-    # ----------------------------------------------------------
-    # FIRST RUN
-    # ----------------------------------------------------------
-
-    first_run = not bool(
-        seen
-    )
-
-    if first_run:
-
-        print(
-            "First run — seeding "
-            "existing listings "
-            "(no alerts)..."
-        )
-
-        for search in searches:
-
-            key = search[
-                "label"
-            ]
-
-            items = fetch_listings(
-                search
-            )
-
-            seen.setdefault(
-                key,
-                [],
-            )
-
-            for item in items:
-
-                if not item.get(
-                    "id"
-                ):
-
+                if not item_id:
                     continue
 
-                iid = str(
-                    item[
-                        "id"
-                    ]
+                if item_id in seen:
+                    continue
+
+                # IMPORTANT:
+                # These filters are applied AFTER retrieval so
+                # the fallback cannot bypass them.
+                if is_blocked(item, search):
+                    seen.add(item_id)
+                    continue
+
+                if not passes_search(item, search):
+                    seen.add(item_id)
+                    continue
+
+                if not passes_price(item, search):
+                    seen.add(item_id)
+                    continue
+
+                print(
+                    f" [NEW] {item.get('_title')} "
+                    f"({item.get('_price')})"
                 )
 
-                if iid not in seen[
-                    key
-                ]:
+                if send_to_discord(
+                    item,
+                    search
+                ):
+                    seen.add(item_id)
 
-                    seen[
-                        key
-                    ].append(
-                        iid
-                    )
+        except Exception as e:
 
-        save_seen(
-            seen
-        )
+            print(
+                f" [!] Search error: {e}"
+            )
 
+
+# ============================================================
+# RUNNER
+# ============================================================
+
+def main():
+
+    print("==========================================")
+    print("       Vinted Discord Alert Bot")
+    print("==========================================")
+
+    if not bootstrap_session():
         print(
-            "Done. Future runs "
-            "will alert on new "
-            "listings.\n"
+            " [!] Initial Vinted session bootstrap failed."
         )
 
-        return
+    seen = load_seen_ids()
 
-    # ----------------------------------------------------------
-    # SEARCH COLOURS
-    # ----------------------------------------------------------
+    print(
+        f" [Vinted] Loaded {len(seen)} seen IDs."
+    )
 
-    label_colours = {
-        s["label"]: COLOURS[
-            i % len(COLOURS)
-        ]
-
-        for i, s in enumerate(
-            searches
-        )
-    }
-
-    # ----------------------------------------------------------
-    # POLLING LOOP
-    # ----------------------------------------------------------
-
-    start_time = time.time()
-
-    checks = 0
+    start = time.time()
+    check_number = 0
 
     while (
-        time.time()
-        - start_time
-        < RUN_DURATION
+        time.time() - start
+        < RUN_TIME
     ):
 
-        checks += 1
-
-        ts = datetime.now().strftime(
-            "%H:%M:%S"
-        )
+        check_number += 1
 
         print(
-            f"[{ts}] "
-            f"Check #{checks}...",
-            end=" ",
-            flush=True,
+            f"\n[{datetime.now().strftime('%H:%M:%S')}] "
+            f"Check #{check_number}..."
         )
 
-        found_new = 0
+        check_all_searches(seen)
 
-        for search in searches:
+        save_seen_ids(seen)
 
-            key = search[
-                "label"
-            ]
+        elapsed = time.time() - start
 
-            colour = (
-                label_colours.get(
-                    key,
-                    COLOURS[0],
-                )
-            )
+        if elapsed + CHECK_INTERVAL >= RUN_TIME:
+            break
 
-            exclude_words = (
-                search.get(
-                    "exclude_words",
-                    [],
-                )
-            )
+        time.sleep(CHECK_INTERVAL)
 
-            items = fetch_listings(
-                search
-            )
+    save_seen_ids(seen)
 
-            seen.setdefault(
-                key,
-                [],
-            )
+    print("\nFinished.")
 
-            for item in items:
-
-                if not item.get(
-                    "id"
-                ):
-
-                    continue
-
-                iid = str(
-                    item[
-                        "id"
-                    ]
-                )
-
-                if iid in seen[
-                    key
-                ]:
-
-                    continue
-
-                # --------------------------------------------------
-                # IMPORTANT:
-                #
-                # Apply block words BEFORE sending to Discord.
-                #
-                # We still mark the item as seen so that a blocked
-                # listing doesn't repeatedly get checked.
-                # --------------------------------------------------
-
-                seen[
-                    key
-                ].append(
-                    iid
-                )
-
-                if matches_exclude_words(
-                    item,
-                    exclude_words,
-                ):
-
-                    print(
-                        f"\n [skip] "
-                        f"'{item.get('title')}' "
-                        f"matches exclude words"
-                    )
-
-                    continue
-
-                send_discord(
-                    key,
-                    item,
-                    colour,
-                    search.get(
-                        "channel_id"
-                    ),
-                )
-
-                found_new += 1
-
-        save_seen(
-            seen
-        )
-
-        if found_new:
-
-            print(
-                f"{found_new} "
-                f"new item(s)."
-            )
-
-        else:
-
-            print(
-                "nothing new."
-            )
-
-        time.sleep(
-            CHECK_INTERVAL
-        )
-
-
-# ──────────────────────────────────────────────
-# ENTRY POINT
-# ──────────────────────────────────────────────
 
 if __name__ == "__main__":
-
-    run() 
+    main()
