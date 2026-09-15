@@ -292,4 +292,184 @@ def build_payload(label: str, item: dict, colour: int) -> dict:
         item.get("created_at_ts")
         or item.get("created_at")
         or item.get("updated_at_ts")
-        or item.get("updated_at
+        or item.get("updated_at")
+        or (item.get("item_box") or {}).get("created_at_ts")
+        or (item.get("item_box") or {}).get("created_at")
+    )
+    if created_at:
+        # Try to get unix timestamp
+        try:
+            unix_ts = int(float(str(created_at)))
+        except (TypeError, ValueError):
+            try:
+                from datetime import timezone as tz
+                s = str(created_at)[:19]
+                dt = datetime.strptime(s, "%Y-%m-%dT%H:%M:%S").replace(tzinfo=tz.utc)
+                unix_ts = int(dt.timestamp())
+            except Exception:
+                unix_ts = int(time.time())
+    else:
+        unix_ts = int(time.time())
+
+    published = f"<t:{unix_ts}:R>"  # Discord relative timestamp e.g. "2 minutes ago"
+
+    # Feedback — try multiple field names Vinted uses
+    feedback_score = (
+        user.get("feedback_reputation")
+        or user.get("feedback_score")
+        or item.get("user", {}).get("feedback_reputation")
+    )
+    feedback_count = (
+        user.get("positive_feedback_count")
+        or user.get("feedback_count")
+        or 0
+    )
+    stars = star_rating(feedback_score)
+    feedback_str = f"{stars} ({feedback_count})"
+
+    # Photo
+    photos = item.get("photos", [])
+    image_url = None
+    if photos:
+        image_url = (
+            photos[0].get("full_size_url")
+            or photos[0].get("url")
+            or (photos[0].get("thumbnails") or [{}])[-1].get("url")
+        )
+
+    embed = {
+        "author": {"name": f"👤 {seller}", "url": seller_url},
+        "title": item.get("title", "New listing"),
+        "url": item_url,
+        "color": colour,
+        "fields": [
+            {"name": "⏳ Published", "value": published, "inline": True},
+            {"name": "🏷️ Brand", "value": brand, "inline": True},
+            {"name": "📐 Size", "value": size, "inline": True},
+            {"name": "⭐ Feedbacks", "value": feedback_str, "inline": True},
+            {"name": "💎 Status", "value": condition, "inline": True},
+            {"name": "💰 Price", "value": price_str, "inline": True},
+        ],
+        "footer": {"text": f"🔍 Search: {label}"},
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+    if image_url:
+        embed["image"] = {"url": image_url}
+
+    components = [
+        {
+            "type": 1,
+            "components": [
+                {"type": 2, "style": 5, "label": "View Listing", "emoji": {"name": "🔗"}, "url": item_url},
+            ],
+        }
+    ]
+
+    return {"embeds": [embed], "components": components}
+
+def send_discord(label: str, item: dict, colour: int, channel_id: str = None):
+    # Use per-search channel if set, otherwise fall back to default
+    target_channel = channel_id if channel_id else DISCORD_CHANNEL_ID
+    if not target_channel:
+        print(f" [!] No channel ID configured for '{label}' — skipping")
+        return
+
+    payload = build_payload(label, item, colour)
+    url = f"https://discord.com/api/v10/channels/{target_channel}/messages"
+    headers = {
+        "Authorization": f"Bot {DISCORD_BOT_TOKEN}",
+        "Content-Type": "application/json",
+    }
+    try:
+        r = requests.post(url, headers=headers, json=payload, timeout=10)
+        r.raise_for_status()
+    except requests.HTTPError as e:
+        print(f" [!] Discord error {e.response.status_code}: {e.response.text}")
+    except requests.RequestException as e:
+        print(f" [!] Discord error: {e}")
+
+# ── Validation ─────────────────────────────────
+def validate():
+    errors = []
+    if not DISCORD_BOT_TOKEN:
+        errors.append("DISCORD_BOT_TOKEN secret is missing")
+    if not DISCORD_CHANNEL_ID:
+        errors.append("DISCORD_CHANNEL_ID secret is missing")
+    if errors:
+        print("=" * 55)
+        for e in errors:
+            print(f" ERROR: {e}")
+        print("=" * 55)
+        raise SystemExit(1)
+
+# ── Main ───────────────────────────────────────
+def run():
+    validate()
+    searches = load_searches()
+    if not searches:
+        print("No searches configured — nothing to do.")
+        return
+
+    print("=" * 55)
+    print(" Vinted -> Discord Alert Bot")
+    print(f" Checking every {CHECK_INTERVAL}s for {RUN_DURATION}s")
+    print("=" * 55)
+    for s in searches:
+        excl = s.get("exclude_words", [])
+        excl_str = f" | exclude: {', '.join(excl)}" if excl else ""
+        ch_str = f" | channel: {s['channel_id']}" if s.get('channel_id') else f" | channel: default ({DISCORD_CHANNEL_ID})"
+        print(f" * {s['label']}{excl_str}{ch_str}")
+    print()
+
+    get_vinted_session_cookie()
+    seen = load_seen()
+
+    # Seed on very first run
+    first_run = not bool(seen)
+    if first_run:
+        print("First run — seeding existing listings (no alerts)...")
+        for search in searches:
+            key = search["label"]
+            items = fetch_listings(search)
+            seen.setdefault(key, [])
+            for item in items:
+                seen[key].append(str(item["id"]))
+        save_seen(seen)
+        print("Done. Future runs will alert on new listings.\n")
+        return
+
+    label_colours = {
+        s["label"]: COLOURS[i % len(COLOURS)] for i, s in enumerate(searches)
+    }
+
+    start_time = time.time()
+    checks = 0
+    while time.time() - start_time < RUN_DURATION:
+        checks += 1
+        ts = datetime.now().strftime("%H:%M:%S")
+        print(f"[{ts}] Check #{checks}...", end=" ", flush=True)
+
+        found_new = 0
+        for search in searches:
+            key = search["label"]
+            colour = label_colours.get(key, COLOURS[0])
+            exclude_words = search.get("exclude_words", [])
+            items = fetch_listings(search)
+            seen.setdefault(key, [])
+            for item in items:
+                iid = str(item["id"])
+                if iid in seen[key]:
+                    continue
+                seen[key].append(iid)
+                if matches_exclude_words(item, exclude_words):
+                    print(f"\n [skip] '{item.get('title')}' matches exclude words")
+                    continue
+                send_discord(key, item, colour, search.get("channel_id"))
+                found_new += 1
+
+        save_seen(seen)
+        print(f"{found_new} new item(s)." if found_new else "nothing new.")
+        time.sleep(CHECK_INTERVAL)
+
+if __name__ == "__main__":
+    run()
