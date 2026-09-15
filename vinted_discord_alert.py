@@ -13,7 +13,7 @@ DISCORD_CHANNEL_ID — right-click channel in Discord → Copy Channel ID
 import time
 import json
 import os
-import re
+import html
 import requests
 from datetime import datetime, timezone
 
@@ -115,6 +115,67 @@ def get_vinted_session_cookie():
         pass
 
 
+def extract_catalogue_items(page_html: str) -> list:
+    """
+    Extract Vinted's embedded catalogue items array from the HTML.
+
+    Vinted currently places the catalogue results inside the HTML
+    response. We deliberately decode the JSON array rather than using
+    a fragile regex for the whole items/pagination block.
+    """
+
+    # Decode HTML entities first. This also handles pages where JSON
+    # has been HTML-escaped inside the document.
+    page_html = html.unescape(page_html)
+
+    decoder = json.JSONDecoder()
+    search_from = 0
+
+    while True:
+        marker = page_html.find('"items"', search_from)
+
+        if marker == -1:
+            break
+
+        colon = page_html.find(":", marker + len('"items"'))
+
+        if colon == -1:
+            break
+
+        value_start = colon + 1
+
+        while (
+            value_start < len(page_html)
+            and page_html[value_start].isspace()
+        ):
+            value_start += 1
+
+        # We only care about an actual JSON array.
+        if value_start < len(page_html) and page_html[value_start] == "[":
+            try:
+                items, _ = decoder.raw_decode(
+                    page_html[value_start:]
+                )
+
+                if isinstance(items, list):
+                    valid_items = [
+                        item
+                        for item in items
+                        if isinstance(item, dict)
+                        and item.get("id") is not None
+                    ]
+
+                    if valid_items:
+                        return valid_items
+
+            except (json.JSONDecodeError, ValueError):
+                pass
+
+        search_from = marker + len('"items"')
+
+    return []
+
+
 def fetch_listings(search: dict) -> list:
     params = {
         "search_text": search["search_text"],
@@ -138,12 +199,14 @@ def fetch_listings(search: dict) -> list:
     if search.get("status_ids"):
         params["status_ids[]"] = search["status_ids"]
 
-    api_url = f"https://{VINTED_DOMAIN}/api/v2/catalog/items"
+    url = f"https://{VINTED_DOMAIN}/api/v2/catalog/items"
 
     # Try the internal API first.
+    # Vinted is currently returning 404 for this endpoint, so if that
+    # happens we fall back to the normal catalogue page below.
     try:
         r = SESSION.get(
-            api_url,
+            url,
             params=params,
             headers=VINTED_HEADERS,
             timeout=15,
@@ -168,13 +231,14 @@ def fetch_listings(search: dict) -> list:
         print(f" [!] Vinted API request error: {e}")
 
     # ── Catalogue HTML fallback ─────────────────
-    # Vinted's normal catalogue page currently contains the listing
-    # payload in the HTML even when the internal API endpoint returns 404.
     catalogue_url = f"https://{VINTED_DOMAIN}/catalog"
 
     catalogue_headers = {
         "User-Agent": VINTED_HEADERS["User-Agent"],
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept": (
+            "text/html,application/xhtml+xml,"
+            "application/xml;q=0.9,*/*;q=0.8"
+        ),
         "Accept-Language": VINTED_HEADERS["Accept-Language"],
         "Referer": f"https://{VINTED_DOMAIN}/",
     }
@@ -188,55 +252,25 @@ def fetch_listings(search: dict) -> list:
         )
 
         if r.status_code != 200:
-            print(f" [!] Catalogue fallback returned HTTP {r.status_code}.")
+            print(
+                f" [!] Catalogue fallback returned "
+                f"HTTP {r.status_code}."
+            )
             return []
 
-        html = r.text
+        items = extract_catalogue_items(r.text)
 
-        # Current Vinted catalogue pages expose an items array followed
-        # by the pagination object inside the page HTML.
-        match = re.search(
-            r'"items"\s*:\s*(\[.*?\])\s*,\s*"pagination"\s*:\s*(\{.*?\})',
-            html,
-            re.DOTALL,
+        if items:
+            print(
+                f" [Vinted] Catalogue fallback found "
+                f"{len(items)} listing(s)."
+            )
+            return items
+
+        print(
+            " [!] Catalogue page loaded, but no listing "
+            "data was found."
         )
-
-        if match:
-            try:
-                items = json.loads(match.group(1))
-                if isinstance(items, list):
-                    print(f" [Vinted] Catalogue fallback found {len(items)} item(s).")
-                    return items
-            except (ValueError, json.JSONDecodeError):
-                pass
-
-        # Older Vinted page format fallback.
-        legacy_match = re.search(
-            r'<script[^>]+data-js-react-on-rails-store="MainStore"[^>]*>'
-            r'(.*?)</script>',
-            html,
-            re.DOTALL,
-        )
-
-        if legacy_match:
-            try:
-                data = json.loads(legacy_match.group(1))
-                items_data = data.get("items", {})
-
-                if isinstance(items_data, dict):
-                    by_id = items_data.get("byId", {})
-                    if isinstance(by_id, dict):
-                        items = list(by_id.values())
-                        if items:
-                            print(
-                                f" [Vinted] Legacy catalogue fallback found "
-                                f"{len(items)} item(s)."
-                            )
-                            return items
-            except (ValueError, json.JSONDecodeError):
-                pass
-
-        print(" [!] Catalogue page loaded, but no listing data was found.")
 
     except requests.RequestException as e:
         print(f" [!] Catalogue fallback request error: {e}")
@@ -271,20 +305,47 @@ def fetch_item_details(item_id) -> dict:
 
     for url in urls:
         try:
-            r = SESSION.get(url, headers=VINTED_HEADERS, timeout=10)
-            print(f" [debug] {url} -> {r.status_code}")
+            r = SESSION.get(
+                url,
+                headers=VINTED_HEADERS,
+                timeout=10,
+            )
+
+            print(
+                f" [debug] {url} -> {r.status_code}"
+            )
 
             if r.status_code == 200:
                 data = r.json()
-                print(f" [debug] top keys = {list(data.keys())}")
+
+                print(
+                    f" [debug] top keys = "
+                    f"{list(data.keys())}"
+                )
 
                 item = data.get("item", data)
                 user = item.get("user", {})
 
-                print(f" [debug] item keys = {list(item.keys())[:15]}")
-                print(f" [debug] user keys = {list(user.keys())[:15]}")
-                print(f" [debug] created_at = {repr(item.get('created_at'))}")
-                print(f" [debug] created_at_ts = {repr(item.get('created_at_ts'))}")
+                print(
+                    f" [debug] item keys = "
+                    f"{list(item.keys())[:15]}"
+                )
+
+                print(
+                    f" [debug] user keys = "
+                    f"{list(user.keys())[:15]}"
+                )
+
+                print(
+                    f" [debug] created_at = "
+                    f"{repr(item.get('created_at'))}"
+                )
+
+                print(
+                    f" [debug] created_at_ts = "
+                    f"{repr(item.get('created_at_ts'))}"
+                )
+
                 print(
                     f" [debug] feedback_reputation = "
                     f"{repr(user.get('feedback_reputation'))}"
@@ -331,6 +392,7 @@ def time_ago(value) -> str:
             from datetime import timezone as tz
 
             s = str(value)[:19]
+
             dt = datetime.strptime(
                 s,
                 "%Y-%m-%dT%H:%M:%S",
@@ -351,14 +413,17 @@ def time_ago(value) -> str:
 
     elif diff < 3600:
         m = diff // 60
+
         return f"{m} minute{'s' if m != 1 else ''} ago"
 
     elif diff < 86400:
         h = diff // 3600
+
         return f"{h} hour{'s' if h != 1 else ''} ago"
 
     else:
         d = diff // 86400
+
         return f"{d} day{'s' if d != 1 else ''} ago"
 
 
@@ -367,12 +432,16 @@ def star_rating(reputation) -> str:
     Vinted feedback_reputation is a float between 0.0 and 1.0.
     Convert to 0-5 stars.
     """
+
     if reputation is None:
         return "No ratings"
 
     try:
         score = float(reputation)
+
+        # reputation is 0.0 to 1.0 — multiply by 5
         stars = round(score * 5)
+
         stars = max(0, min(5, stars))
 
         return "⭐" * stars + "✩" * (5 - stars)
@@ -390,11 +459,16 @@ def get_item_url(item: dict) -> str:
     return url
 
 
-def build_payload(label: str, item: dict, colour: int) -> dict:
+def build_payload(
+    label: str,
+    item: dict,
+    colour: int,
+) -> dict:
+
     item_url = get_item_url(item)
     item_id = item.get("id", "")
 
-    # Fetch user profile for feedback rating (public endpoint)
+    # Fetch user profile for feedback rating
     user_id = item.get("user", {}).get("id")
 
     if user_id:
@@ -408,13 +482,15 @@ def build_payload(label: str, item: dict, colour: int) -> dict:
 
     # Construct specific action URLs
     buy_url = (
-        f"https://{VINTED_DOMAIN}/transaction/buy/item/{item_id}"
+        f"https://{VINTED_DOMAIN}/transaction/buy/item/"
+        f"{item_id}"
         if item_id
         else item_url
     )
 
     negotiate_url = (
-        f"https://{VINTED_DOMAIN}/items/{item_id}/make_offer"
+        f"https://{VINTED_DOMAIN}/items/"
+        f"{item_id}/make_offer"
         if item_id
         else item_url
     )
@@ -423,7 +499,12 @@ def build_payload(label: str, item: dict, colour: int) -> dict:
 
     # Seller
     user = item.get("user", {})
-    seller = user.get("login", "Unknown seller")
+
+    seller = user.get(
+        "login",
+        "Unknown seller",
+    )
+
     seller_id = user.get("id")
 
     seller_url = (
@@ -434,38 +515,65 @@ def build_payload(label: str, item: dict, colour: int) -> dict:
 
     # Price
     price_obj = item.get("price", {})
-    amount = price_obj.get("amount", "?")
+
+    amount = price_obj.get(
+        "amount",
+        "?",
+    )
+
     price_str = f"{CURRENCY_SYMBOL}{amount}"
 
     # Fields
-    brand = item.get("brand_title") or "—"
-    size = item.get("size_title") or "—"
+    brand = item.get(
+        "brand_title"
+    ) or "—"
 
-    # Condition — use label map
-    raw_status = item.get("status") or ""
-    status_id = item.get("status_id")
+    size = item.get(
+        "size_title"
+    ) or "—"
+
+    # Condition
+    raw_status = item.get(
+        "status"
+    ) or ""
+
+    status_id = item.get(
+        "status_id"
+    )
 
     condition = (
-        CONDITION_LABELS.get(status_id, raw_status)
+        CONDITION_LABELS.get(
+            status_id,
+            raw_status,
+        )
         if status_id
         else raw_status or "—"
     )
 
-    # Published — use Discord relative timestamp
+    # Published
     created_at = (
         item.get("created_at_ts")
         or item.get("created_at")
         or item.get("updated_at_ts")
         or item.get("updated_at")
-        or (item.get("item_box") or {}).get("created_at_ts")
-        or (item.get("item_box") or {}).get("created_at")
+        or (item.get("item_box") or {}).get(
+            "created_at_ts"
+        )
+        or (item.get("item_box") or {}).get(
+            "created_at"
+        )
     )
 
     if created_at:
         try:
-            unix_ts = int(float(str(created_at)))
+            unix_ts = int(
+                float(str(created_at))
+            )
 
-        except (TypeError, ValueError):
+        except (
+            TypeError,
+            ValueError,
+        ):
             try:
                 from datetime import timezone as tz
 
@@ -474,43 +582,86 @@ def build_payload(label: str, item: dict, colour: int) -> dict:
                 dt = datetime.strptime(
                     s,
                     "%Y-%m-%dT%H:%M:%S",
-                ).replace(tzinfo=tz.utc)
+                ).replace(
+                    tzinfo=tz.utc
+                )
 
-                unix_ts = int(dt.timestamp())
+                unix_ts = int(
+                    dt.timestamp()
+                )
 
             except Exception:
-                unix_ts = int(time.time())
+                unix_ts = int(
+                    time.time()
+                )
 
     else:
-        unix_ts = int(time.time())
+        unix_ts = int(
+            time.time()
+        )
 
-    published = f"<t:{unix_ts}:R>"
+    published = (
+        f"<t:{unix_ts}:R>"
+    )
 
-    # Feedback — try multiple field names Vinted uses
+    # Feedback
     feedback_score = (
-        user.get("feedback_reputation")
-        or user.get("feedback_score")
-        or item.get("user", {}).get("feedback_reputation")
+        user.get(
+            "feedback_reputation"
+        )
+        or user.get(
+            "feedback_score"
+        )
+        or item.get(
+            "user",
+            {},
+        ).get(
+            "feedback_reputation"
+        )
     )
 
     feedback_count = (
-        user.get("positive_feedback_count")
-        or user.get("feedback_count")
+        user.get(
+            "positive_feedback_count"
+        )
+        or user.get(
+            "feedback_count"
+        )
         or 0
     )
 
-    stars = star_rating(feedback_score)
-    feedback_str = f"{stars} ({feedback_count})"
+    stars = star_rating(
+        feedback_score
+    )
+
+    feedback_str = (
+        f"{stars} ({feedback_count})"
+    )
 
     # Photo
-    photos = item.get("photos", [])
+    photos = item.get(
+        "photos",
+        [],
+    )
+
     image_url = None
 
     if photos:
         image_url = (
-            photos[0].get("full_size_url")
-            or photos[0].get("url")
-            or (photos[0].get("thumbnails") or [{}])[-1].get("url")
+            photos[0].get(
+                "full_size_url"
+            )
+            or photos[0].get(
+                "url"
+            )
+            or (
+                photos[0].get(
+                    "thumbnails"
+                )
+                or [{}]
+            )[-1].get(
+                "url"
+            )
         )
 
     embed = {
@@ -518,9 +669,16 @@ def build_payload(label: str, item: dict, colour: int) -> dict:
             "name": f"👤 {seller}",
             "url": seller_url,
         },
-        "title": item.get("title", "New listing"),
+
+        "title": item.get(
+            "title",
+            "New listing",
+        ),
+
         "url": item_url,
+
         "color": colour,
+
         "fields": [
             {
                 "name": "⏳ Published",
@@ -553,10 +711,14 @@ def build_payload(label: str, item: dict, colour: int) -> dict:
                 "inline": True,
             },
         ],
+
         "footer": {
             "text": f"🔍 Search: {label}",
         },
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+
+        "timestamp": datetime.now(
+            timezone.utc
+        ).isoformat(),
     }
 
     if image_url:
@@ -572,7 +734,9 @@ def build_payload(label: str, item: dict, colour: int) -> dict:
                     "type": 2,
                     "style": 5,
                     "label": "View Listing",
-                    "emoji": {"name": "🔗"},
+                    "emoji": {
+                        "name": "🔗"
+                    },
                     "url": item_url,
                 },
             ],
@@ -591,21 +755,37 @@ def send_discord(
     colour: int,
     channel_id: str = None,
 ):
-    # Use per-search channel if set, otherwise fall back to default
-    target_channel = channel_id if channel_id else DISCORD_CHANNEL_ID
+
+    # Use per-search channel if set,
+    # otherwise fall back to default
+    target_channel = (
+        channel_id
+        if channel_id
+        else DISCORD_CHANNEL_ID
+    )
 
     if not target_channel:
         print(
-            f" [!] No channel ID configured for '{label}' — skipping"
+            f" [!] No channel ID configured "
+            f"for '{label}' — skipping"
         )
         return
 
-    payload = build_payload(label, item, colour)
+    payload = build_payload(
+        label,
+        item,
+        colour,
+    )
 
-    url = f"https://discord.com/api/v10/channels/{target_channel}/messages"
+    url = (
+        f"https://discord.com/api/v10/channels/"
+        f"{target_channel}/messages"
+    )
 
     headers = {
-        "Authorization": f"Bot {DISCORD_BOT_TOKEN}",
+        "Authorization": (
+            f"Bot {DISCORD_BOT_TOKEN}"
+        ),
         "Content-Type": "application/json",
     }
 
@@ -622,11 +802,14 @@ def send_discord(
     except requests.HTTPError as e:
         print(
             f" [!] Discord error "
-            f"{e.response.status_code}: {e.response.text}"
+            f"{e.response.status_code}: "
+            f"{e.response.text}"
         )
 
     except requests.RequestException as e:
-        print(f" [!] Discord error: {e}")
+        print(
+            f" [!] Discord error: {e}"
+        )
 
 
 # ── Validation ─────────────────────────────────
@@ -634,18 +817,25 @@ def validate():
     errors = []
 
     if not DISCORD_BOT_TOKEN:
-        errors.append("DISCORD_BOT_TOKEN secret is missing")
+        errors.append(
+            "DISCORD_BOT_TOKEN secret is missing"
+        )
 
     if not DISCORD_CHANNEL_ID:
-        errors.append("DISCORD_CHANNEL_ID secret is missing")
+        errors.append(
+            "DISCORD_CHANNEL_ID secret is missing"
+        )
 
     if errors:
         print("=" * 55)
 
         for e in errors:
-            print(f" ERROR: {e}")
+            print(
+                f" ERROR: {e}"
+            )
 
         print("=" * 55)
+
         raise SystemExit(1)
 
 
@@ -656,19 +846,29 @@ def run():
     searches = load_searches()
 
     if not searches:
-        print("No searches configured — nothing to do.")
+        print(
+            "No searches configured — nothing to do."
+        )
         return
 
     print("=" * 55)
-    print(" Vinted -> Discord Alert Bot")
+
+    print(
+        " Vinted -> Discord Alert Bot"
+    )
+
     print(
         f" Checking every {CHECK_INTERVAL}s "
         f"for {RUN_DURATION}s"
     )
+
     print("=" * 55)
 
     for s in searches:
-        excl = s.get("exclude_words", [])
+        excl = s.get(
+            "exclude_words",
+            [],
+        )
 
         excl_str = (
             f" | exclude: {', '.join(excl)}"
@@ -679,7 +879,10 @@ def run():
         ch_str = (
             f" | channel: {s['channel_id']}"
             if s.get("channel_id")
-            else f" | channel: default ({DISCORD_CHANNEL_ID})"
+            else (
+                f" | channel: default "
+                f"({DISCORD_CHANNEL_ID})"
+            )
         )
 
         print(
@@ -706,33 +909,49 @@ def run():
         for search in searches:
             key = search["label"]
 
-            items = fetch_listings(search)
+            items = fetch_listings(
+                search
+            )
 
-            seen.setdefault(key, [])
+            seen.setdefault(
+                key,
+                [],
+            )
 
             for item in items:
-                seen[key].append(str(item["id"]))
+                seen[key].append(
+                    str(item["id"])
+                )
 
         save_seen(seen)
 
         print(
-            "Done. Future runs will alert on new listings.\n"
+            "Done. Future runs will alert "
+            "on new listings.\n"
         )
 
         return
 
     label_colours = {
-        s["label"]: COLOURS[i % len(COLOURS)]
+        s["label"]: COLOURS[
+            i % len(COLOURS)
+        ]
         for i, s in enumerate(searches)
     }
 
     start_time = time.time()
     checks = 0
 
-    while time.time() - start_time < RUN_DURATION:
+    while (
+        time.time() - start_time
+        < RUN_DURATION
+    ):
+
         checks += 1
 
-        ts = datetime.now().strftime("%H:%M:%S")
+        ts = datetime.now().strftime(
+            "%H:%M:%S"
+        )
 
         print(
             f"[{ts}] Check #{checks}...",
@@ -744,6 +963,7 @@ def run():
 
         for search in searches:
             key = search["label"]
+
             colour = label_colours.get(
                 key,
                 COLOURS[0],
@@ -754,17 +974,26 @@ def run():
                 [],
             )
 
-            items = fetch_listings(search)
+            items = fetch_listings(
+                search
+            )
 
-            seen.setdefault(key, [])
+            seen.setdefault(
+                key,
+                [],
+            )
 
             for item in items:
-                iid = str(item["id"])
+                iid = str(
+                    item["id"]
+                )
 
                 if iid in seen[key]:
                     continue
 
-                seen[key].append(iid)
+                seen[key].append(
+                    iid
+                )
 
                 if matches_exclude_words(
                     item,
@@ -775,13 +1004,16 @@ def run():
                         f"'{item.get('title')}' "
                         f"matches exclude words"
                     )
+
                     continue
 
                 send_discord(
                     key,
                     item,
                     colour,
-                    search.get("channel_id"),
+                    search.get(
+                        "channel_id"
+                    ),
                 )
 
                 found_new += 1
@@ -794,7 +1026,9 @@ def run():
             else "nothing new."
         )
 
-        time.sleep(CHECK_INTERVAL)
+        time.sleep(
+            CHECK_INTERVAL
+        )
 
 
 if __name__ == "__main__":
