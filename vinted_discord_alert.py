@@ -199,11 +199,10 @@ def fetch_listings(search: dict) -> list:
     if search.get("status_ids"):
         params["status_ids[]"] = search["status_ids"]
 
-    url = f"https://{VINTED_DOMAIN}/api/v2/catalog/items"
+    # Vinted's current web catalogue endpoint.
+    # The old /api/v2/catalog/items endpoint is returning 404.
+    url = f"https://{VINTED_DOMAIN}/web/api/core/catalog/items"
 
-    # Try the internal API first.
-    # Vinted is currently returning 404 for this endpoint, so if that
-    # happens we fall back to the normal catalogue page below.
     try:
         r = SESSION.get(
             url,
@@ -214,66 +213,19 @@ def fetch_listings(search: dict) -> list:
 
         if r.status_code == 200:
             try:
-                return r.json().get("items", [])
+                data = r.json()
+                return data.get("items", [])
             except (ValueError, json.JSONDecodeError):
-                print(" [!] Vinted API returned invalid JSON.")
-
-        elif r.status_code in (401, 403, 404):
-            print(
-                f" [!] Vinted API returned HTTP {r.status_code} "
-                f"— trying catalogue page fallback..."
-            )
-
-        else:
-            print(f" [!] Vinted API returned HTTP {r.status_code}.")
-
-    except requests.RequestException as e:
-        print(f" [!] Vinted API request error: {e}")
-
-    # ── Catalogue HTML fallback ─────────────────
-    catalogue_url = f"https://{VINTED_DOMAIN}/catalog"
-
-    catalogue_headers = {
-        "User-Agent": VINTED_HEADERS["User-Agent"],
-        "Accept": (
-            "text/html,application/xhtml+xml,"
-            "application/xml;q=0.9,*/*;q=0.8"
-        ),
-        "Accept-Language": VINTED_HEADERS["Accept-Language"],
-        "Referer": f"https://{VINTED_DOMAIN}/",
-    }
-
-    try:
-        r = SESSION.get(
-            catalogue_url,
-            params=params,
-            headers=catalogue_headers,
-            timeout=20,
-        )
-
-        if r.status_code != 200:
-            print(
-                f" [!] Catalogue fallback returned "
-                f"HTTP {r.status_code}."
-            )
-            return []
-
-        items = extract_catalogue_items(r.text)
-
-        if items:
-            print(
-                f" [Vinted] Catalogue fallback found "
-                f"{len(items)} listing(s)."
-            )
-            return items
+                print(" [!] Vinted catalogue API returned invalid JSON.")
+                return []
 
         print(
-            " [!] Catalogue page loaded, but no listing "
-            "data was found."
+            f" [!] Vinted catalogue API returned "
+            f"HTTP {r.status_code}."
         )
 
     except requests.RequestException as e:
-        print(f" [!] Catalogue fallback request error: {e}")
+        print(f" [!] Vinted catalogue API request error: {e}")
 
     return []
 
