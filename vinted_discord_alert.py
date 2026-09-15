@@ -115,6 +115,7 @@ class VintedListingParser(HTMLParser):
         self.stack = []
         self.capture = None
         self.capture_text = ""
+        self.card_text = ""
 
     def handle_starttag(self, tag, attrs):
         attrs = dict(attrs)
@@ -138,6 +139,7 @@ class VintedListingParser(HTMLParser):
                     "photos": [],
                 }
                 self.stack = ["card"]
+                self.card_text = ""
                 return
 
         if self.current is None:
@@ -196,12 +198,39 @@ class VintedListingParser(HTMLParser):
             self.stack.pop()
 
         if tag == "div" and not self.stack:
+            # TITLE FALLBACK
+            # If Vinted didn't expose the description-title
+            # testid, try to recover the title from the card text.
+            if not self.current["title"]:
+                lines = [
+                    " ".join(line.split())
+                    for line in self.card_text.splitlines()
+                    if line.strip()
+                ]
+
+                for line in lines:
+                    if (
+                        line
+                        and not line.startswith("£")
+                        and "/items/" not in line
+                        and line not in (
+                            self.current.get("brand_title", ""),
+                            self.current.get("size_title", ""),
+                            self.current.get("status", ""),
+                        )
+                    ):
+                        self.current["title"] = line
+                        break
+
             self.items.append(self.current)
             self.current = None
 
     def handle_data(self, data):
-        if self.current is not None and self.capture:
-            self.capture_text += data
+        if self.current is not None:
+            self.card_text += data
+
+            if self.capture:
+                self.capture_text += data
 
     def _parse_price(self, text):
         # Handles £12.00, £12, 12.00 £ etc.
