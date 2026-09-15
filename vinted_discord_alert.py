@@ -46,6 +46,13 @@ RUN_DURATION = 55
 VINTED_DOMAIN = "www.vinted.co.uk"
 CURRENCY_SYMBOL = "£"
 
+# Cookie whose presence proves the session actually authenticated.
+# (Vinted's own scraping libraries check for this specifically — a 200
+# response from the homepage does NOT guarantee this cookie was set.)
+AUTH_COOKIE_NAME = "access_token_web"
+COOKIE_FETCH_ATTEMPTS = 3
+COOKIE_FETCH_RETRY_DELAY = 2  # seconds
+
 # ──────────────────────────────────────────────
 # CONDITION LABELS
 # ──────────────────────────────────────────────
@@ -101,11 +108,31 @@ def save_seen(seen: dict):
         json.dump(seen, f)
 
 # ── Vinted API ─────────────────────────────────
-def get_vinted_session_cookie():
-    try:
-        SESSION.get(f"https://{VINTED_DOMAIN}/", headers=VINTED_HEADERS, timeout=10)
-    except requests.RequestException:
-        pass
+def get_vinted_session_cookie() -> bool:
+    """
+    Warms up SESSION by visiting the Vinted homepage, and verifies that a
+    real auth cookie was actually set — not just that we got a 200 back.
+    Retries a few times because Vinted's cookie issuance is flaky, not just
+    binary pass/fail. Returns True if a usable session was established.
+    """
+    for attempt in range(1, COOKIE_FETCH_ATTEMPTS + 1):
+        try:
+            SESSION.get(f"https://{VINTED_DOMAIN}/", headers=VINTED_HEADERS, timeout=10)
+            cookies = SESSION.cookies.get_dict()
+            if AUTH_COOKIE_NAME in cookies:
+                print(f" [ok] Session cookie acquired (attempt {attempt}/{COOKIE_FETCH_ATTEMPTS})")
+                return True
+            print(
+                f" [!] Cookie fetch attempt {attempt}/{COOKIE_FETCH_ATTEMPTS}: "
+                f"'{AUTH_COOKIE_NAME}' not present (got: {list(cookies.keys())})"
+            )
+        except requests.RequestException as e:
+            print(f" [!] Cookie fetch attempt {attempt}/{COOKIE_FETCH_ATTEMPTS} failed: {e}")
+        if attempt < COOKIE_FETCH_ATTEMPTS:
+            time.sleep(COOKIE_FETCH_RETRY_DELAY)
+
+    print(f" [!] Could not obtain '{AUTH_COOKIE_NAME}' after {COOKIE_FETCH_ATTEMPTS} attempts")
+    return False
 
 def fetch_listings(search: dict) -> list:
     params = {
@@ -127,23 +154,34 @@ def fetch_listings(search: dict) -> list:
 
     url = f"https://{VINTED_DOMAIN}/api/v2/catalog/items"
 
-    # Try once, and if we get a 401/403/404 (session dead / blocked),
-    # refresh the session cookie and retry a single time before giving up.
-    for attempt in range(2):
+    # Try up to 3 times: on an error status, refresh the session cookie
+    # (with verification this time) and retry.
+    max_attempts = 3
+    for attempt in range(1, max_attempts + 1):
         try:
             r = SESSION.get(url, params=params, headers=VINTED_HEADERS, timeout=15)
             r.raise_for_status()
             return r.json().get("items", [])
         except requests.HTTPError as e:
             status = e.response.status_code if e.response is not None else None
-            if status in (401, 403, 404) and attempt == 0:
-                print(f" [!] Got {status} — refreshing session cookie and retrying...")
-                get_vinted_session_cookie()
+            # Print Vinted's actual response body — this tells us whether
+            # it's an app-level rejection (JSON body, e.g. {"code":...})
+            # vs. a raw block page (HTML), which point to different fixes.
+            body_preview = ""
+            if e.response is not None:
+                body_preview = e.response.text[:200]
+            print(f" [!] HTTP {status} on attempt {attempt}/{max_attempts}: {body_preview}")
+
+            if status in (401, 403, 404) and attempt < max_attempts:
+                print(" [!] Refreshing session cookie and retrying...")
+                if not get_vinted_session_cookie():
+                    print(" [!] Session refresh failed — skipping remaining retries this cycle")
+                    break
                 continue
-            print(f" [!] HTTP error: {e}")
+            break
         except requests.RequestException as e:
-            print(f" [!] Request error: {e}")
-        break
+            print(f" [!] Request error on attempt {attempt}/{max_attempts}: {e}")
+            break
     return []
 
 def fetch_user_profile(user_id) -> dict:
@@ -421,7 +459,8 @@ def run():
         print(f" * {s['label']}{excl_str}{ch_str}")
     print()
 
-    get_vinted_session_cookie()
+    if not get_vinted_session_cookie():
+        print(" [!] Proceeding without a confirmed session — requests may fail.")
     seen = load_seen()
 
     # Seed on very first run
