@@ -146,23 +146,47 @@ class VintedListingParser(HTMLParser):
 
         self.stack.append(tag)
 
-        # Listing URL
+        # Listing URL + ACTUAL LISTING TITLE
         if tag == "a":
             href = attrs.get("href", "")
+
             if href and "/items/" in href and not self.current["url"]:
                 self.current["url"] = urljoin(
                     f"https://{VINTED_DOMAIN}/", href
                 )
 
+            # The overlay link contains the real listing title
+            # in its title attribute.
+            if testid.endswith("--overlay-link"):
+                link_title = attrs.get("title", "")
+
+                if link_title:
+                    self.current["title"] = html.unescape(
+                        link_title
+                    ).strip()
+
         # Main image
         if tag == "img":
             src = attrs.get("src") or attrs.get("data-src")
+
             if src and not self.current["image_url"]:
                 self.current["image_url"] = src
 
+            # Fallback if the overlay title isn't available.
+            if not self.current["title"]:
+                alt = attrs.get("alt", "")
+
+                if alt:
+                    self.current["title"] = html.unescape(
+                        alt
+                    ).strip()
+
         # Text fields
+        # IMPORTANT:
+        # description-title is the brand/short title,
+        # NOT the actual listing title.
         if testid.endswith("--description-title"):
-            self.capture = "title"
+            self.capture = "brand"
             self.capture_tag = tag
             self.capture_text = ""
 
@@ -180,14 +204,13 @@ class VintedListingParser(HTMLParser):
         if self.current is None:
             return
 
-        # Only finish capturing when the SAME element that started
-        # the capture has closed. This prevents nested spans/divs
-        # inside the title from cutting the title off early.
+        # Only finish capturing when the SAME element that
+        # started the capture has closed.
         if self.capture and tag == self.capture_tag:
             text = " ".join(self.capture_text.split())
 
-            if self.capture == "title" and text:
-                self.current["title"] = text
+            if self.capture == "brand" and text:
+                self.current["brand_title"] = text
 
             elif self.capture == "subtitle" and text:
                 self._parse_subtitle(text)
@@ -213,19 +236,20 @@ class VintedListingParser(HTMLParser):
     def _parse_price(self, text):
         # Handles £12.00, £12, 12.00 £ etc.
         match = re.search(r"([0-9]+(?:[.,][0-9]+)?)", text)
+
         if match:
             amount = match.group(1).replace(",", ".")
             self.current["price"]["amount"] = amount
 
     def _parse_subtitle(self, text):
-        # Vinted normally puts size/brand/condition together.
+        # Vinted normally puts size/condition together.
         parts = [p.strip() for p in text.split("·") if p.strip()]
 
         if len(parts) >= 1:
             self.current["size_title"] = parts[0]
 
         if len(parts) >= 2:
-            self.current["brand_title"] = parts[1]
+            self.current["status"] = parts[1]
 
         if len(parts) >= 3:
             self.current["status"] = parts[2]
@@ -381,11 +405,13 @@ def time_ago(value) -> str:
     if not value:
         return "Unknown"
     ts = None
+
     # Try Unix timestamp
     try:
         ts = int(float(str(value)))
     except (TypeError, ValueError):
         pass
+
     # Try ISO 8601 string e.g. "2024-01-15T10:30:00+00:00"
     if ts is None:
         try:
