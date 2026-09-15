@@ -114,8 +114,8 @@ class VintedListingParser(HTMLParser):
         self.current = None
         self.stack = []
         self.capture = None
+        self.capture_tag = None
         self.capture_text = ""
-        self.card_text = ""
 
     def handle_starttag(self, tag, attrs):
         attrs = dict(attrs)
@@ -139,7 +139,6 @@ class VintedListingParser(HTMLParser):
                     "photos": [],
                 }
                 self.stack = ["card"]
-                self.card_text = ""
                 return
 
         if self.current is None:
@@ -164,73 +163,52 @@ class VintedListingParser(HTMLParser):
         # Text fields
         if testid.endswith("--description-title"):
             self.capture = "title"
+            self.capture_tag = tag
             self.capture_text = ""
 
         elif testid.endswith("--description-subtitle"):
             self.capture = "subtitle"
+            self.capture_tag = tag
             self.capture_text = ""
 
         elif testid.endswith("--price-text"):
             self.capture = "price"
+            self.capture_tag = tag
             self.capture_text = ""
 
     def handle_endtag(self, tag):
         if self.current is None:
             return
 
-        if self.capture:
-            if tag in ("p", "span", "div"):
-                text = " ".join(self.capture_text.split())
+        # Only finish capturing when the SAME element that started
+        # the capture has closed. This prevents nested spans/divs
+        # inside the title from cutting the title off early.
+        if self.capture and tag == self.capture_tag:
+            text = " ".join(self.capture_text.split())
 
-                if self.capture == "title" and text:
-                    self.current["title"] = text
+            if self.capture == "title" and text:
+                self.current["title"] = text
 
-                elif self.capture == "subtitle" and text:
-                    self._parse_subtitle(text)
+            elif self.capture == "subtitle" and text:
+                self._parse_subtitle(text)
 
-                elif self.capture == "price" and text:
-                    self._parse_price(text)
+            elif self.capture == "price" and text:
+                self._parse_price(text)
 
-                self.capture = None
-                self.capture_text = ""
+            self.capture = None
+            self.capture_tag = None
+            self.capture_text = ""
 
         if self.stack:
             self.stack.pop()
 
         if tag == "div" and not self.stack:
-            # TITLE FALLBACK
-            # If Vinted didn't expose the description-title
-            # testid, try to recover the title from the card text.
-            if not self.current["title"]:
-                lines = [
-                    " ".join(line.split())
-                    for line in self.card_text.splitlines()
-                    if line.strip()
-                ]
-
-                for line in lines:
-                    if (
-                        line
-                        and not line.startswith("£")
-                        and "/items/" not in line
-                        and line not in (
-                            self.current.get("brand_title", ""),
-                            self.current.get("size_title", ""),
-                            self.current.get("status", ""),
-                        )
-                    ):
-                        self.current["title"] = line
-                        break
-
             self.items.append(self.current)
             self.current = None
 
     def handle_data(self, data):
-        if self.current is not None:
-            self.card_text += data
-
-            if self.capture:
-                self.capture_text += data
+        if self.current is not None and self.capture:
+            self.capture_text += data
 
     def _parse_price(self, text):
         # Handles £12.00, £12, 12.00 £ etc.
@@ -251,7 +229,6 @@ class VintedListingParser(HTMLParser):
 
         if len(parts) >= 3:
             self.current["status"] = parts[2]
-
 
 def parse_vinted_catalogue(page_html: str) -> list:
     parser = VintedListingParser()
