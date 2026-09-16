@@ -155,15 +155,31 @@ class VintedListingParser(HTMLParser):
                     f"https://{VINTED_DOMAIN}/", href
                 )
 
-            # The overlay link contains the real listing title
-            # in its title attribute.
+            # The overlay link contains the real listing title,
+            # followed by extra Vinted metadata such as:
+            # ", Brand: Xbox, Condition: ..., 11.00 £, 12.25 £"
             if testid.endswith("--overlay-link"):
                 link_title = attrs.get("title", "")
 
                 if link_title:
-                    self.current["title"] = html.unescape(
+                    link_title = html.unescape(
                         link_title
                     ).strip()
+
+                    # Remove Vinted's appended metadata while
+                    # preserving commas in the real listing title.
+                    metadata_match = re.search(
+                        r",\s*(?:Brand|Condition|Size):\s*",
+                        link_title,
+                        flags=re.IGNORECASE,
+                    )
+
+                    if metadata_match:
+                        link_title = link_title[
+                            :metadata_match.start()
+                        ].strip()
+
+                    self.current["title"] = link_title
 
         # Main image
         if tag == "img":
