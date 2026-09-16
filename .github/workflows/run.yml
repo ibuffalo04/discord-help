@@ -2,8 +2,9 @@ name: discord-help
 
 on:
   schedule:
-    # Triggers every hour to start a new 55-minute loop
-    - cron: '0 * * * *'
+    # Triggers every hour at 17 minutes past the hour
+    # to avoid GitHub's busier :00 scheduling period
+    - cron: '17 * * * *'
   push:
     branches:
       - main
@@ -14,13 +15,16 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+
       - run: pip install requests
-      
+
       - name: Run script every 5 seconds for 55 minutes
         run: |
           # Calculate end time (55 minutes = 3300 seconds)
@@ -43,6 +47,7 @@ jobs:
             
             sleep 5
           done
+
         env:
           DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
           DISCORD_CHANNEL_ID: ${{ secrets.DISCORD_CHANNEL_ID }}
