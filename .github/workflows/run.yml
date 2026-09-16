@@ -9,21 +9,28 @@ on:
     branches:
       - main
 
+    # The scanner updates this file automatically.
+    # Don't start another 55-minute run just because
+    # the seen-ID state was saved.
+    paths-ignore:
+      - 'vinted_seen_ids.json'
+
   workflow_dispatch:
 
-# Never allow two Vinted scanners to run at the same time.
-# If a manual run is already running when the scheduled
-# run arrives, the new run waits instead of overlapping.
+# Only one Vinted scanner may run at once.
+# Additional manual/scheduled runs wait in a queue
+# instead of replacing each other.
 concurrency:
   group: vinted-scanner
   cancel-in-progress: false
+  queue: max
 
 jobs:
   run:
     runs-on: ubuntu-latest
 
-    # Gives the 55-minute Python process enough time for
-    # setup and saving the seen IDs afterwards.
+    # Python scans for 55 minutes.
+    # This leaves a few minutes for setup and saving state.
     timeout-minutes: 60
 
     permissions:
@@ -31,6 +38,10 @@ jobs:
 
     steps:
       - uses: actions/checkout@v7
+        with:
+          # Always start queued runs from the latest version
+          # of main, including the latest seen IDs.
+          ref: main
 
       - uses: actions/setup-python@v7
         with:
