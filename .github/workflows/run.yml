@@ -3,7 +3,6 @@ name: discord-help
 on:
   schedule:
     # Triggers every hour at 17 minutes past the hour
-    # to avoid GitHub's busier :00 scheduling period
     - cron: '17 * * * *'
   push:
     branches:
@@ -17,9 +16,9 @@ jobs:
       contents: write
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.11'
 
