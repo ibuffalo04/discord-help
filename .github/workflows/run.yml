@@ -2,16 +2,30 @@ name: discord-help
 
 on:
   schedule:
-    # Triggers every hour at 17 minutes past the hour
+    # Start once every hour at 17 minutes past the hour
     - cron: '17 * * * *'
+
   push:
     branches:
       - main
+
   workflow_dispatch:
+
+# Never allow two Vinted scanners to run at the same time.
+# If a manual run is already running when the scheduled
+# run arrives, the new run waits instead of overlapping.
+concurrency:
+  group: vinted-scanner
+  cancel-in-progress: false
 
 jobs:
   run:
     runs-on: ubuntu-latest
+
+    # Gives the 55-minute Python process enough time for
+    # setup and saving the seen IDs afterwards.
+    timeout-minutes: 60
+
     permissions:
       contents: write
 
@@ -24,29 +38,21 @@ jobs:
 
       - run: pip install requests
 
-      - name: Run script every 5 seconds for 55 minutes
-        run: |
-          # Calculate end time (55 minutes = 3300 seconds)
-          end=$((SECONDS + 3300))
-          
-          while [ $SECONDS -lt $end ]; do
-            echo "Running script at $(date)"
-            python vinted_discord_alert.py
-            
-            # Save progress immediately so data isn't lost if the runner stops
-            git config user.name "github-actions"
-            git config user.email "github-actions@github.com"
-            git add vinted_seen_ids.json || true
-            
-            # Only commit and push if there are actual changes
-            if ! git diff --cached --quiet; then
-              git commit -m "Update seen IDs (automated loop)"
-              git push || true
-            fi
-            
-            sleep 5
-          done
-
+      - name: Run Vinted scanner for 55 minutes
+        run: python vinted_discord_alert.py
         env:
           DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
           DISCORD_CHANNEL_ID: ${{ secrets.DISCORD_CHANNEL_ID }}
+
+      - name: Save seen IDs
+        if: always()
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+
+          git add vinted_seen_ids.json || true
+
+          if ! git diff --cached --quiet; then
+            git commit -m "Update seen IDs (automated loop)"
+            git push || true
+          fi
