@@ -3,8 +3,10 @@ Vinted → Discord Alert Bot
 ==========================
 - Reads searches from vinted_searches.json (managed via dashboard)
 - Uses Discord Bot Token for real working buttons
-- Loops every 5 seconds for 55 seconds per run
+- Runs continuously for 55 minutes per GitHub Actions run
+- Checks Vinted every 5 seconds
 - Supports exclude words, multiple keywords, all condition types
+- Automatically cools down after Vinted HTTP 403 responses
 
 GitHub Secrets needed:
 DISCORD_BOT_TOKEN — your Discord bot token
@@ -46,9 +48,18 @@ FALLBACK_SEARCHES = [
 ]
 
 CHECK_INTERVAL = 5
-RUN_DURATION = 55
+
+# One Python process now runs for the full 55-minute GitHub job.
+RUN_DURATION = 3300
+
+# If Vinted returns HTTP 403, stop requesting it for 2 minutes.
+FORBIDDEN_COOLDOWN = 120
+
 VINTED_DOMAIN = "www.vinted.co.uk"
 CURRENCY_SYMBOL = "£"
+
+# Shared cooldown for all Vinted searches.
+VINTED_COOLDOWN_UNTIL = 0
 
 # ──────────────────────────────────────────────
 # CONDITION LABELS
@@ -92,7 +103,7 @@ def load_searches() -> list:
         if enabled:
             print(f" Loaded {len(enabled)} search(es) from {SEARCHES_FILE}")
             return enabled
-    print(f" Using fallback searches")
+    print(" Using fallback searches")
     return FALLBACK_SEARCHES
 
 # ── State ──────────────────────────────────────
@@ -310,6 +321,42 @@ def get_vinted_session_cookie():
         pass
 
 def fetch_listings(search: dict) -> list:
+    global VINTED_COOLDOWN_UNTIL
+
+    now = time.time()
+
+    # If Vinted has recently returned HTTP 403,
+    # don't send another request until the cooldown expires.
+    if now < VINTED_COOLDOWN_UNTIL:
+        remaining = max(
+            1,
+            int(VINTED_COOLDOWN_UNTIL - now)
+        )
+
+        print(
+            f" [!] Vinted cooldown active "
+            f"({remaining}s remaining)."
+        )
+
+        return []
+
+    # If a cooldown has just expired, refresh the Vinted
+    # session once before resuming normal catalogue requests.
+    if VINTED_COOLDOWN_UNTIL:
+        print(
+            " [Vinted] Cooldown finished — "
+            "refreshing session."
+        )
+
+        VINTED_COOLDOWN_UNTIL = 0
+
+        try:
+            SESSION.cookies.clear()
+        except Exception:
+            pass
+
+        get_vinted_session_cookie()
+
     params = {
         "search_text": search["search_text"],
         "order": search.get("order", "newest_first"),
@@ -340,6 +387,18 @@ def fetch_listings(search: dict) -> list:
             headers=VINTED_HEADERS,
             timeout=20
         )
+
+        if r.status_code == 403:
+            VINTED_COOLDOWN_UNTIL = (
+                time.time() + FORBIDDEN_COOLDOWN
+            )
+
+            print(
+                f" [!] Vinted catalogue returned HTTP 403. "
+                f"Cooling down for {FORBIDDEN_COOLDOWN}s."
+            )
+
+            return []
 
         if r.status_code != 200:
             print(
@@ -410,16 +469,20 @@ def matches_exclude_words(item: dict, exclude_words: list) -> bool:
     """Returns True if item title contains any excluded word."""
     if not exclude_words:
         return False
+
     title = (item.get("title") or "").lower()
+
     for word in exclude_words:
         if word.lower().strip() in title:
             return True
+
     return False
 
 # ── Discord helpers ────────────────────────────
 def time_ago(value) -> str:
     if not value:
         return "Unknown"
+
     ts = None
 
     # Try Unix timestamp
@@ -755,7 +818,7 @@ def run():
     print(" Vinted -> Discord Alert Bot")
     print(
         f" Checking every {CHECK_INTERVAL}s "
-        f"for {RUN_DURATION}s"
+        f"for 55 minutes"
     )
     print("=" * 55)
 
@@ -781,7 +844,10 @@ def run():
 
     print()
 
+    # Create one Vinted session at the beginning of the
+    # 55-minute process and reuse it throughout the run.
     get_vinted_session_cookie()
+
     seen = load_seen()
 
     # Seed on very first run
@@ -876,6 +942,8 @@ def run():
 
                 found_new += 1
 
+        # Save locally every check. GitHub commits this file
+        # to the repository after the 55-minute process ends.
         save_seen(seen)
 
         print(
