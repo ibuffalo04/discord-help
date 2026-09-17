@@ -16,10 +16,16 @@ on:
       - 'vinted_seen_ids.json'
 
   workflow_dispatch:
+    inputs:
+      handoff_count:
+        description: 'Internal Cloudflare handoff counter'
+        required: false
+        default: '0'
+        type: string
 
 # Only one Vinted scanner may run at once.
-# Additional manual/scheduled runs wait in a queue
-# instead of replacing each other.
+# Additional manual/scheduled/automatic runs wait
+# in the queue instead of overlapping.
 concurrency:
   group: vinted-scanner
   cancel-in-progress: false
@@ -29,12 +35,13 @@ jobs:
   run:
     runs-on: ubuntu-latest
 
-    # Python scans for 55 minutes.
+    # Python normally scans for 55 minutes.
     # This leaves a few minutes for setup and saving state.
     timeout-minutes: 60
 
     permissions:
       contents: write
+      actions: write
 
     steps:
       - uses: actions/checkout@v7
@@ -50,13 +57,22 @@ jobs:
       - run: pip install requests
 
       - name: Run Vinted scanner for 55 minutes
-        run: python vinted_discord_alert.py
+        id: scanner
+        shell: bash
+        run: |
+          set -o pipefail
+
+          # Keep the normal Actions log visible while also
+          # saving a copy so we can detect a Cloudflare
+          # challenge after the scanner exits.
+          python vinted_discord_alert.py | tee vinted_scanner.log
         env:
           DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
           DISCORD_CHANNEL_ID: ${{ secrets.DISCORD_CHANNEL_ID }}
 
       - name: Save seen IDs
         if: always()
+        shell: bash
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
@@ -66,4 +82,94 @@ jobs:
           if ! git diff --cached --quiet; then
             git commit -m "Update seen IDs (automated loop)"
             git push || true
+          fi
+
+      - name: Queue replacement after Cloudflare challenge
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+          # Scheduled/push/manual runs start at 0.
+          # Automatically dispatched replacements inherit
+          # and increment this number.
+          HANDOFF_COUNT: ${{ github.event.inputs.handoff_count || '0' }}
+
+          # Prevent an endless loop if Cloudflare challenges
+          # every fresh GitHub runner we receive.
+          MAX_AUTO_HANDOFFS: '3'
+
+        run: |
+          # If there is no scanner log, there is nothing
+          # to inspect.
+          if [ ! -f vinted_scanner.log ]; then
+            echo "No scanner log found."
+            exit 0
+          fi
+
+          # Only create a replacement run when the Python
+          # bot explicitly confirmed a Cloudflare challenge.
+          if ! grep -Fq "Cloudflare challenge confirmed." vinted_scanner.log; then
+            echo "No Cloudflare challenge detected."
+            echo "No replacement run needed."
+            exit 0
+          fi
+
+          echo "Cloudflare challenge detected."
+
+          CURRENT_HANDOFF="${HANDOFF_COUNT:-0}"
+
+          # Safety check in case the input somehow contains
+          # something other than a number.
+          if ! [[ "$CURRENT_HANDOFF" =~ ^[0-9]+$ ]]; then
+            CURRENT_HANDOFF=0
+          fi
+
+          # Don't allow endless automatic runner replacement.
+          if [ "$CURRENT_HANDOFF" -ge "$MAX_AUTO_HANDOFFS" ]; then
+            echo "Automatic handoff limit reached."
+            echo "No additional run will be queued."
+            exit 0
+          fi
+
+          NEXT_HANDOFF=$((CURRENT_HANDOFF + 1))
+
+          echo "Automatic handoff ${NEXT_HANDOFF}/${MAX_AUTO_HANDOFFS}"
+
+          # Work out the filename of THIS workflow automatically,
+          # so you don't need to hard-code its YAML filename.
+          WORKFLOW_FILE="${GITHUB_WORKFLOW_REF#${GITHUB_REPOSITORY}/.github/workflows/}"
+          WORKFLOW_FILE="${WORKFLOW_FILE%@*}"
+
+          echo "Dispatching workflow: ${WORKFLOW_FILE}"
+
+          BODY=$(printf \
+            '{"ref":"main","inputs":{"handoff_count":"%s"}}' \
+            "$NEXT_HANDOFF"
+          )
+
+          HTTP_STATUS=$(curl \
+            -sS \
+            -L \
+            -o /tmp/workflow_dispatch_response.json \
+            -w "%{http_code}" \
+            -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "X-GitHub-Api-Version: 2026-03-10" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/${WORKFLOW_FILE}/dispatches" \
+            -d "$BODY"
+          )
+
+          if [[ "$HTTP_STATUS" =~ ^2[0-9][0-9]$ ]]; then
+            echo "Replacement Vinted scanner successfully queued."
+          else
+            echo "Failed to queue replacement scanner."
+            echo "GitHub API returned HTTP ${HTTP_STATUS}."
+
+            if [ -s /tmp/workflow_dispatch_response.json ]; then
+              cat /tmp/workflow_dispatch_response.json
+            fi
+
+            exit 1
           fi
