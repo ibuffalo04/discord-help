@@ -9,11 +9,12 @@ on:
     branches:
       - main
 
-    # The scanner updates this file automatically.
+    # The scanner updates these files automatically.
     # Don't start another 55-minute run just because
-    # the seen-ID state was saved.
+    # scanner state/telemetry was saved.
     paths-ignore:
       - 'vinted_seen_ids.json'
+      - 'vinted_runner_stats.json'
 
   workflow_dispatch:
     inputs:
@@ -47,7 +48,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           # Always start queued runs from the latest version
-          # of main, including the latest seen IDs.
+          # of main, including the latest seen IDs/telemetry.
           ref: main
 
       - uses: actions/setup-python@v7
@@ -70,17 +71,17 @@ jobs:
           DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
           DISCORD_CHANNEL_ID: ${{ secrets.DISCORD_CHANNEL_ID }}
 
-      - name: Save seen IDs
+      - name: Save scanner state and telemetry
         if: always()
         shell: bash
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
 
-          git add vinted_seen_ids.json || true
+          git add vinted_seen_ids.json vinted_runner_stats.json || true
 
           if ! git diff --cached --quiet; then
-            git commit -m "Update seen IDs (automated loop)"
+            git commit -m "Update scanner state (automated loop)"
             git push || true
           fi
 
