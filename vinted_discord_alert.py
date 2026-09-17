@@ -9,6 +9,7 @@ Vinted → Discord Alert Bot
 - If Cloudflare explicitly challenges the runner, ends the run immediately
 - Generic non-Cloudflare 403s still use a short fallback cooldown
 - Prints useful diagnostics when Vinted returns HTTP 403
+- Passively logs runner IP/country/ASN/provider and survival time
 
 GitHub Secrets needed:
 DISCORD_BOT_TOKEN — your Discord bot token
@@ -68,6 +69,12 @@ VINTED_COOLDOWN_UNTIL = 0
 VINTED_403_STREAK = 0
 STOP_SCANNER = False
 
+# Passive runner telemetry state.
+RUN_STARTED_AT = 0.0
+ACTIVE_RUN_RECORD_ID = None
+ACTIVE_RUN_FINISHED = False
+CURRENT_CHECK_COUNT = 0
+
 # ──────────────────────────────────────────────
 # CONDITION LABELS
 # ──────────────────────────────────────────────
@@ -82,6 +89,11 @@ CONDITION_LABELS = {
 
 STATE_FILE = "vinted_seen_ids.json"
 SEARCHES_FILE = "vinted_searches.json"
+RUNNER_STATS_FILE = "vinted_runner_stats.json"
+
+# Keep enough history to spot patterns without letting
+# the repository file grow forever.
+MAX_RUNNER_HISTORY = 250
 
 VINTED_HEADERS = {
     "User-Agent": (
@@ -143,6 +155,332 @@ def load_seen() -> dict:
 def save_seen(seen: dict):
     with open(STATE_FILE, "w") as f:
         json.dump(seen, f)
+
+
+# ── Passive runner telemetry ───────────────────
+def utc_now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def load_runner_stats() -> dict:
+    if not os.path.exists(RUNNER_STATS_FILE):
+        return {"runs": []}
+
+    try:
+        with open(RUNNER_STATS_FILE) as f:
+            data = json.load(f)
+
+        # Backward-compatible if the file ever contains
+        # just a bare list of runs.
+        if isinstance(data, list):
+            return {"runs": data}
+
+        if (
+            isinstance(data, dict)
+            and isinstance(data.get("runs"), list)
+        ):
+            return data
+
+    except (
+        OSError,
+        json.JSONDecodeError,
+        TypeError,
+    ):
+        pass
+
+    return {"runs": []}
+
+
+def save_runner_stats(stats: dict):
+    runs = stats.get("runs", [])
+
+    if len(runs) > MAX_RUNNER_HISTORY:
+        stats["runs"] = runs[-MAX_RUNNER_HISTORY:]
+
+    with open(RUNNER_STATS_FILE, "w") as f:
+        json.dump(
+            stats,
+            f,
+            indent=2,
+            ensure_ascii=False,
+        )
+
+
+def get_runner_network_info() -> dict:
+    """
+    Passive diagnostics only.
+
+    Ask an independent IP-information service what public IP
+    this GitHub runner is using and record coarse network data.
+    Failure here never stops or changes the scanner.
+    """
+    info = {
+        "ip": "Unknown",
+        "country": "Unknown",
+        "country_code": "Unknown",
+        "region": "Unknown",
+        "city": "Unknown",
+        "asn": "Unknown",
+        "network_org": "Unknown",
+    }
+
+    try:
+        r = requests.get(
+            "https://api.ipwho.org/me",
+            headers={
+                "User-Agent": "vinted-runner-telemetry/1.0"
+            },
+            timeout=8,
+        )
+
+        if r.status_code != 200:
+            print(
+                f" [Runner] IP lookup returned HTTP "
+                f"{r.status_code}; continuing without it."
+            )
+            return info
+
+        payload = r.json()
+
+        if payload.get("success") is False:
+            print(
+                " [Runner] IP lookup reported failure; "
+                "continuing without it."
+            )
+            return info
+
+        data = payload.get("data", payload)
+
+        # The self endpoint currently exposes country data at
+        # the top level. Handle geoLocation too for resilience.
+        geo = data.get("geoLocation") or data
+        connection = data.get("connection") or {}
+
+        asn_number = (
+            connection.get("asn_number")
+            or connection.get("number")
+        )
+
+        if asn_number is not None:
+            asn_value = str(asn_number)
+
+            if not asn_value.upper().startswith("AS"):
+                asn_value = f"AS{asn_value}"
+
+            info["asn"] = asn_value
+
+        info["ip"] = (
+            data.get("ip")
+            or info["ip"]
+        )
+
+        info["country"] = (
+            geo.get("country")
+            or data.get("country")
+            or info["country"]
+        )
+
+        info["country_code"] = (
+            geo.get("countryCode")
+            or data.get("countryCode")
+            or info["country_code"]
+        )
+
+        info["region"] = (
+            geo.get("region")
+            or data.get("region")
+            or info["region"]
+        )
+
+        info["city"] = (
+            geo.get("city")
+            or data.get("city")
+            or info["city"]
+        )
+
+        info["network_org"] = (
+            connection.get("asn_org")
+            or connection.get("org")
+            or connection.get("isp")
+            or info["network_org"]
+        )
+
+    except (
+        requests.RequestException,
+        ValueError,
+        TypeError,
+    ) as e:
+        print(
+            f" [Runner] IP lookup unavailable: {e}"
+        )
+
+    return info
+
+
+def start_runner_telemetry():
+    global RUN_STARTED_AT
+    global ACTIVE_RUN_RECORD_ID
+    global ACTIVE_RUN_FINISHED
+
+    RUN_STARTED_AT = time.time()
+    ACTIVE_RUN_FINISHED = False
+
+    run_id = os.environ.get(
+        "GITHUB_RUN_ID",
+        "local",
+    )
+
+    run_attempt = os.environ.get(
+        "GITHUB_RUN_ATTEMPT",
+        "1",
+    )
+
+    ACTIVE_RUN_RECORD_ID = (
+        f"{run_id}-"
+        f"{run_attempt}-"
+        f"{int(RUN_STARTED_AT)}"
+    )
+
+    network = get_runner_network_info()
+
+    record = {
+        "record_id": ACTIVE_RUN_RECORD_ID,
+        "github_run_id": run_id,
+        "github_run_attempt": run_attempt,
+        "github_event_name": os.environ.get(
+            "GITHUB_EVENT_NAME",
+            "local",
+        ),
+        "started_at": utc_now_iso(),
+        "ended_at": None,
+        "outcome": "running",
+        "survival_seconds": None,
+        "survival_minutes": None,
+        "checks": 0,
+        "cf_ray": None,
+        "cf_edge": None,
+        **network,
+    }
+
+    stats = load_runner_stats()
+    stats.setdefault("runs", []).append(record)
+    save_runner_stats(stats)
+
+    print(
+        f" [Runner] Public IP: {network['ip']}"
+    )
+
+    print(
+        f" [Runner] Location: "
+        f"{network['country']} "
+        f"({network['country_code']})"
+        f" | {network['region']}"
+        f" | {network['city']}"
+    )
+
+    print(
+        f" [Runner] Network: "
+        f"{network['asn']} "
+        f"| {network['network_org']}"
+    )
+
+    print(
+        " [Runner] Telemetry mode: passive only "
+        "(no IP/country/ASN blocking)."
+    )
+
+    print()
+
+
+def finish_runner_telemetry(
+    outcome: str,
+    cf_ray: str = None,
+):
+    global ACTIVE_RUN_FINISHED
+
+    if (
+        ACTIVE_RUN_FINISHED
+        or not ACTIVE_RUN_RECORD_ID
+    ):
+        return
+
+    elapsed = max(
+        0,
+        int(time.time() - RUN_STARTED_AT),
+    )
+
+    stats = load_runner_stats()
+    runs = stats.setdefault("runs", [])
+
+    record = None
+
+    for candidate in reversed(runs):
+        if (
+            candidate.get("record_id")
+            == ACTIVE_RUN_RECORD_ID
+        ):
+            record = candidate
+            break
+
+    if record is None:
+        # Extremely defensive fallback if the telemetry file
+        # was unexpectedly replaced during the run.
+        record = {
+            "record_id": ACTIVE_RUN_RECORD_ID,
+            "github_run_id": os.environ.get(
+                "GITHUB_RUN_ID",
+                "local",
+            ),
+            "github_run_attempt": os.environ.get(
+                "GITHUB_RUN_ATTEMPT",
+                "1",
+            ),
+            "github_event_name": os.environ.get(
+                "GITHUB_EVENT_NAME",
+                "local",
+            ),
+            "started_at": None,
+            "ip": "Unknown",
+            "country": "Unknown",
+            "country_code": "Unknown",
+            "region": "Unknown",
+            "city": "Unknown",
+            "asn": "Unknown",
+            "network_org": "Unknown",
+        }
+
+        runs.append(record)
+
+    record["ended_at"] = utc_now_iso()
+    record["outcome"] = outcome
+    record["survival_seconds"] = elapsed
+    record["survival_minutes"] = round(
+        elapsed / 60,
+        2,
+    )
+    record["checks"] = CURRENT_CHECK_COUNT
+
+    if cf_ray:
+        record["cf_ray"] = cf_ray
+
+        if "-" in cf_ray:
+            record["cf_edge"] = (
+                cf_ray.rsplit("-", 1)[-1]
+            )
+
+    save_runner_stats(stats)
+    ACTIVE_RUN_FINISHED = True
+
+    minutes, seconds = divmod(
+        elapsed,
+        60,
+    )
+
+    print(
+        f" [Runner] Result: {outcome}"
+        f" | survived {minutes}m {seconds}s"
+        f" | checks: {CURRENT_CHECK_COUNT}"
+    )
 
 
 # ── Vinted HTML parser ─────────────────────────
@@ -538,6 +876,11 @@ def fetch_listings(search: dict) -> list:
                     " [!] Cloudflare challenge confirmed."
                 )
 
+                finish_runner_telemetry(
+                    "cloudflare_challenge",
+                    cf_ray=r.headers.get("CF-Ray"),
+                )
+
                 print(
                     " [!] Ending this scanner immediately "
                     "instead of retrying the challenged runner."
@@ -587,6 +930,10 @@ def fetch_listings(search: dict) -> list:
                 >= MAX_GENERIC_403_STREAK
             ):
                 STOP_SCANNER = True
+
+                finish_runner_telemetry(
+                    "generic_403_stop"
+                )
 
                 print(
                     " [!] Third consecutive generic "
@@ -1306,6 +1653,7 @@ def validate():
 # ── Main ───────────────────────────────────────
 def run():
     global STOP_SCANNER
+    global CURRENT_CHECK_COUNT
 
     validate()
 
@@ -1368,6 +1716,9 @@ def run():
 
     print()
 
+    # Start passive telemetry before contacting Vinted.
+    start_runner_telemetry()
+
     # Create one Vinted session at the beginning
     # and reuse it while this runner remains healthy.
     get_vinted_session_cookie()
@@ -1403,9 +1754,17 @@ def run():
                     )
                 )
 
+            if STOP_SCANNER:
+                break
+
         save_seen(
             seen
         )
+
+        if not ACTIVE_RUN_FINISHED:
+            finish_runner_telemetry(
+                "seeded_first_run"
+            )
 
         print(
             "Done. Future runs will "
@@ -1433,6 +1792,7 @@ def run():
         < RUN_DURATION
     ):
         checks += 1
+        CURRENT_CHECK_COUNT = checks
 
         ts = datetime.now().strftime(
             "%H:%M:%S"
@@ -1527,6 +1887,11 @@ def run():
 
         time.sleep(
             CHECK_INTERVAL
+        )
+
+    if not ACTIVE_RUN_FINISHED:
+        finish_runner_telemetry(
+            "completed_full_run"
         )
 
     print(
