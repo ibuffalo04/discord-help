@@ -4,13 +4,11 @@ Vinted → Discord Alert Bot
 - Reads searches from vinted_searches.json (managed via dashboard)
 - Uses Discord Bot Token for real working buttons
 - Runs continuously for 55 minutes per GitHub Actions run
-- Checks Vinted every 10 seconds
+- Checks Vinted every 5 seconds
 - Supports exclude words, multiple keywords, all condition types
-- Automatically backs off after Vinted HTTP 403 responses
-- First 403 waits 2 minutes
-- Second consecutive 403 waits 5 minutes
-- Third consecutive 403 ends the runner early
-- Prints Cloudflare diagnostics when Vinted returns HTTP 403
+- If Cloudflare explicitly challenges the runner, ends the run immediately
+- Generic non-Cloudflare 403s still use a short fallback cooldown
+- Prints useful diagnostics when Vinted returns HTTP 403
 
 GitHub Secrets needed:
 DISCORD_BOT_TOKEN — your Discord bot token
@@ -51,23 +49,21 @@ FALLBACK_SEARCHES = [
     },
 ]
 
-CHECK_INTERVAL = 10
+CHECK_INTERVAL = 5
 
 # One Python process runs for the full 55-minute GitHub job.
 RUN_DURATION = 3300
 
-# 403 handling:
-# First 403 = 2-minute cooldown
-# Second consecutive 403 = 5-minute cooldown
-# Third consecutive 403 = end this runner early
+# Fallback handling for a generic 403 that is NOT
+# explicitly identified as a Cloudflare challenge.
 FIRST_403_COOLDOWN = 120
 SECOND_403_COOLDOWN = 300
-MAX_403_STREAK = 3
+MAX_GENERIC_403_STREAK = 3
 
 VINTED_DOMAIN = "www.vinted.co.uk"
 CURRENCY_SYMBOL = "£"
 
-# Shared Vinted block state.
+# Shared Vinted state.
 VINTED_COOLDOWN_UNTIL = 0
 VINTED_403_STREAK = 0
 STOP_SCANNER = False
@@ -217,8 +213,7 @@ class VintedListingParser(HTMLParser):
                 )
 
             # The overlay link contains the real listing title,
-            # followed by extra Vinted metadata such as:
-            # ", Brand: Xbox, Condition: ..., 11.00 £, 12.25 £"
+            # followed by extra Vinted metadata.
             if testid.endswith("--overlay-link"):
                 link_title = attrs.get("title", "")
 
@@ -227,8 +222,6 @@ class VintedListingParser(HTMLParser):
                         link_title
                     ).strip()
 
-                    # Remove Vinted's appended metadata while
-                    # preserving commas in the genuine title.
                     metadata_match = re.search(
                         r",\s*(?:Brand|Condition|Size):\s*",
                         link_title,
@@ -265,7 +258,6 @@ class VintedListingParser(HTMLParser):
                     ).strip()
 
         # Text fields
-        # IMPORTANT:
         # description-title is the brand/short title,
         # NOT the actual listing title.
         if testid.endswith("--description-title"):
@@ -287,8 +279,6 @@ class VintedListingParser(HTMLParser):
         if self.current is None:
             return
 
-        # Only finish capturing when the SAME element that
-        # started the capture has closed.
         if (
             self.capture
             and tag == self.capture_tag
@@ -334,7 +324,6 @@ class VintedListingParser(HTMLParser):
             self.capture_text += data
 
     def _parse_price(self, text):
-        # Handles £12.00, £12, 12.00 £ etc.
         match = re.search(
             r"([0-9]+(?:[.,][0-9]+)?)",
             text
@@ -350,7 +339,6 @@ class VintedListingParser(HTMLParser):
             self.current["price"]["amount"] = amount
 
     def _parse_subtitle(self, text):
-        # Vinted normally puts size/condition together.
         parts = [
             p.strip()
             for p in text.split("·")
@@ -371,7 +359,6 @@ def parse_vinted_catalogue(page_html: str) -> list:
     parser = VintedListingParser()
     parser.feed(page_html)
 
-    # Only return genuine catalogue items.
     items = []
     seen_ids = set()
 
@@ -472,8 +459,7 @@ def fetch_listings(search: dict) -> list:
 
     now = time.time()
 
-    # If Vinted has recently returned HTTP 403,
-    # don't send another request until the cooldown expires.
+    # Only used for a generic non-Cloudflare 403.
     if now < VINTED_COOLDOWN_UNTIL:
         remaining = max(
             1,
@@ -487,10 +473,8 @@ def fetch_listings(search: dict) -> list:
 
         return []
 
-    # Cooldown has expired.
-    # Keep the existing Vinted session and simply retry
-    # the catalogue instead of clearing cookies and
-    # making an extra homepage request.
+    # Generic cooldown expired.
+    # Keep the existing session and retry the catalogue.
     if VINTED_COOLDOWN_UNTIL:
         print(
             " [Vinted] Cooldown finished — "
@@ -538,10 +522,34 @@ def fetch_listings(search: dict) -> list:
         if r.status_code == 403:
             print_403_diagnostics(r)
 
+            cf_mitigated = (
+                r.headers
+                .get("CF-Mitigated", "")
+                .strip()
+                .lower()
+            )
+
+            # Cloudflare explicitly says this response is
+            # a challenge. Do not keep retrying this runner.
+            if cf_mitigated == "challenge":
+                STOP_SCANNER = True
+
+                print(
+                    " [!] Cloudflare challenge confirmed."
+                )
+
+                print(
+                    " [!] Ending this scanner immediately "
+                    "instead of retrying the challenged runner."
+                )
+
+                return []
+
+            # If it is a generic 403 rather than a confirmed
+            # Cloudflare challenge, retain the fallback
+            # cooldown behaviour.
             VINTED_403_STREAK += 1
 
-            # First consecutive 403:
-            # wait 2 minutes.
             if VINTED_403_STREAK == 1:
                 cooldown_seconds = FIRST_403_COOLDOWN
 
@@ -551,15 +559,13 @@ def fetch_listings(search: dict) -> list:
                 )
 
                 print(
-                    f" [!] Vinted catalogue returned "
+                    f" [!] Vinted returned a generic "
                     f"HTTP 403. Cooling down for "
                     f"{cooldown_seconds}s."
                 )
 
                 return []
 
-            # Second consecutive 403:
-            # wait 5 minutes.
             if VINTED_403_STREAK == 2:
                 cooldown_seconds = SECOND_403_COOLDOWN
 
@@ -569,27 +575,26 @@ def fetch_listings(search: dict) -> list:
                 )
 
                 print(
-                    f" [!] Vinted catalogue returned "
-                    f"HTTP 403 again. Cooling down for "
+                    f" [!] Vinted returned another generic "
+                    f"HTTP 403. Cooling down for "
                     f"{cooldown_seconds}s."
                 )
 
                 return []
 
-            # Third consecutive 403:
-            # this runner appears to be stuck behind a
-            # Cloudflare challenge. End it cleanly so the
-            # next queued GitHub runner can take over.
-            if VINTED_403_STREAK >= MAX_403_STREAK:
+            if (
+                VINTED_403_STREAK
+                >= MAX_GENERIC_403_STREAK
+            ):
                 STOP_SCANNER = True
 
                 print(
-                    " [!] Third consecutive Vinted HTTP 403."
+                    " [!] Third consecutive generic "
+                    "Vinted HTTP 403."
                 )
 
                 print(
-                    " [!] Ending this scanner early so the "
-                    "next queued GitHub run can take over."
+                    " [!] Ending this scanner early."
                 )
 
                 return []
@@ -602,9 +607,8 @@ def fetch_listings(search: dict) -> list:
 
             return []
 
-        # Successful request means the temporary 403 block
-        # has cleared. Reset everything so a future block
-        # starts again with the 2-minute cooldown.
+        # Any successful catalogue response clears
+        # generic 403 fallback state.
         if VINTED_403_STREAK:
             print(
                 " [Vinted] 403 block cleared — "
@@ -667,7 +671,6 @@ def fetch_user_profile(user_id) -> dict:
 
 def fetch_item_details(item_id) -> dict:
     """Fetch full item details to get rating, date etc."""
-    # Try both known Vinted API endpoints
     urls = [
         (
             f"https://{VINTED_DOMAIN}/api/v2/"
@@ -778,7 +781,6 @@ def time_ago(value) -> str:
 
     ts = None
 
-    # Try Unix timestamp
     try:
         ts = int(
             float(str(value))
@@ -787,8 +789,6 @@ def time_ago(value) -> str:
     except (TypeError, ValueError):
         pass
 
-    # Try ISO 8601 string
-    # e.g. "2024-01-15T10:30:00+00:00"
     if ts is None:
         try:
             from datetime import timezone as tz
@@ -913,8 +913,6 @@ def build_payload(
         ""
     )
 
-    # Fetch user profile for feedback rating
-    # (public endpoint)
     user_id = (
         item
         .get("user", {})
@@ -932,7 +930,6 @@ def build_payload(
                 **user_profile
             }
 
-    # Construct specific action URLs
     buy_url = (
         f"https://{VINTED_DOMAIN}/"
         f"transaction/buy/item/{item_id}"
@@ -949,7 +946,6 @@ def build_payload(
 
     details_url = item_url
 
-    # Seller
     user = item.get(
         "user",
         {}
@@ -971,7 +967,6 @@ def build_payload(
         else item_url
     )
 
-    # Price
     price_obj = item.get(
         "price",
         {}
@@ -986,7 +981,6 @@ def build_payload(
         f"{CURRENCY_SYMBOL}{amount}"
     )
 
-    # Fields
     brand = (
         item.get("brand_title")
         or "—"
@@ -997,7 +991,6 @@ def build_payload(
         or "—"
     )
 
-    # Condition — use label map
     raw_status = (
         item.get("status")
         or ""
@@ -1016,7 +1009,6 @@ def build_payload(
         else raw_status or "—"
     )
 
-    # Published
     created_at = (
         item.get("created_at_ts")
         or item.get("created_at")
@@ -1076,7 +1068,6 @@ def build_payload(
         f"<t:{unix_ts}:R>"
     )
 
-    # Feedback
     feedback_score = (
         user.get("feedback_reputation")
         or user.get("feedback_score")
@@ -1106,7 +1097,6 @@ def build_payload(
         f"{stars} ({feedback_count})"
     )
 
-    # Photo
     photos = item.get(
         "photos",
         []
@@ -1225,8 +1215,6 @@ def send_discord(
     colour: int,
     channel_id: str = None
 ):
-    # Use per-search channel if set,
-    # otherwise fall back to default.
     target_channel = (
         channel_id
         if channel_id
@@ -1380,13 +1368,12 @@ def run():
 
     print()
 
-    # Create one Vinted session at the beginning of the
-    # 55-minute process and reuse it throughout the run.
+    # Create one Vinted session at the beginning
+    # and reuse it while this runner remains healthy.
     get_vinted_session_cookie()
 
     seen = load_seen()
 
-    # Seed on very first run
     first_run = not bool(
         seen
     )
@@ -1519,15 +1506,15 @@ def run():
             if STOP_SCANNER:
                 break
 
-        # Save state before potentially ending early.
+        # Always save state before exiting.
         save_seen(
             seen
         )
 
         if STOP_SCANNER:
             print(
-                "Scanner stopped early due to repeated "
-                "Cloudflare 403 challenges."
+                "Scanner stopped because Cloudflare "
+                "challenged this runner."
             )
 
             break
