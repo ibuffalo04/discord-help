@@ -4,7 +4,7 @@ Vinted → Discord Alert Bot
 - Reads searches from vinted_searches.json (managed via dashboard)
 - Uses Discord Bot Token for real working buttons
 - Runs continuously for 55 minutes per GitHub Actions run
-- Checks Vinted every 5 seconds
+- Checks Vinted every 10 seconds
 - Supports exclude words, multiple keywords, all condition types
 - Automatically backs off after Vinted HTTP 403 responses
 - First 403 waits 2 minutes
@@ -51,7 +51,7 @@ FALLBACK_SEARCHES = [
     },
 ]
 
-CHECK_INTERVAL = 5
+CHECK_INTERVAL = 10
 
 # One Python process runs for the full 55-minute GitHub job.
 RUN_DURATION = 3300
@@ -487,22 +487,17 @@ def fetch_listings(search: dict) -> list:
 
         return []
 
-    # Cooldown has expired. Reuse the same Python process
-    # and refresh the Vinted session before the next attempt.
+    # Cooldown has expired.
+    # Keep the existing Vinted session and simply retry
+    # the catalogue instead of clearing cookies and
+    # making an extra homepage request.
     if VINTED_COOLDOWN_UNTIL:
         print(
             " [Vinted] Cooldown finished — "
-            "refreshing session."
+            "retrying catalogue."
         )
 
         VINTED_COOLDOWN_UNTIL = 0
-
-        try:
-            SESSION.cookies.clear()
-        except Exception:
-            pass
-
-        get_vinted_session_cookie()
 
     params = {
         "search_text": search["search_text"],
