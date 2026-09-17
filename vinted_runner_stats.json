@@ -1,0 +1,25 @@
+{
+  "runs": [
+    {
+      "record_id": "35197539550-1-1789633557",
+      "github_run_id": "35197539550",
+      "github_run_attempt": "1",
+      "github_event_name": "push",
+      "started_at": "2026-09-17T08:25:58.159446+00:00",
+      "ended_at": "2026-09-17T09:21:01.284792+00:00",
+      "outcome": "completed_full_run",
+      "survival_seconds": 3303,
+      "survival_minutes": 55.05,
+      "checks": 524,
+      "cf_ray": null,
+      "cf_edge": null,
+      "ip": "Unknown",
+      "country": "Unknown",
+      "country_code": "Unknown",
+      "region": "Unknown",
+      "city": "Unknown",
+      "asn": "Unknown",
+      "network_org": "Unknown"
+    }
+  ]
+}
