@@ -6,9 +6,11 @@ Vinted → Discord Alert Bot
 - Runs continuously for 55 minutes per GitHub Actions run
 - Checks Vinted every 5 seconds
 - Supports exclude words, multiple keywords, all condition types
-- Automatically cools down after Vinted HTTP 403 responses
-- First 403 waits 2 minutes, repeated 403s wait 5 minutes
-- Prints useful diagnostics when Vinted returns HTTP 403
+- Automatically backs off after Vinted HTTP 403 responses
+- First 403 waits 2 minutes
+- Second consecutive 403 waits 5 minutes
+- Third consecutive 403 ends the runner early
+- Prints Cloudflare diagnostics when Vinted returns HTTP 403
 
 GitHub Secrets needed:
 DISCORD_BOT_TOKEN — your Discord bot token
@@ -54,18 +56,21 @@ CHECK_INTERVAL = 5
 # One Python process runs for the full 55-minute GitHub job.
 RUN_DURATION = 3300
 
-# 403 cooldowns:
-# First 403 = 2 minutes
-# Any repeated 403s = 5 minutes
+# 403 handling:
+# First 403 = 2-minute cooldown
+# Second consecutive 403 = 5-minute cooldown
+# Third consecutive 403 = end this runner early
 FIRST_403_COOLDOWN = 120
-REPEAT_403_COOLDOWN = 300
+SECOND_403_COOLDOWN = 300
+MAX_403_STREAK = 3
 
 VINTED_DOMAIN = "www.vinted.co.uk"
 CURRENCY_SYMBOL = "£"
 
-# Shared cooldown state.
+# Shared Vinted block state.
 VINTED_COOLDOWN_UNTIL = 0
 VINTED_403_STREAK = 0
+STOP_SCANNER = False
 
 # ──────────────────────────────────────────────
 # CONDITION LABELS
@@ -106,6 +111,7 @@ COLOURS = [
 ]
 
 SESSION = requests.Session()
+
 
 # ── Searches ───────────────────────────────────
 def load_searches() -> list:
@@ -462,6 +468,7 @@ def print_403_diagnostics(response):
 def fetch_listings(search: dict) -> list:
     global VINTED_COOLDOWN_UNTIL
     global VINTED_403_STREAK
+    global STOP_SCANNER
 
     now = time.time()
 
@@ -480,8 +487,8 @@ def fetch_listings(search: dict) -> list:
 
         return []
 
-    # If a cooldown has just expired, refresh the Vinted
-    # session once before resuming normal catalogue requests.
+    # Cooldown has expired. Reuse the same Python process
+    # and refresh the Vinted session before the next attempt.
     if VINTED_COOLDOWN_UNTIL:
         print(
             " [Vinted] Cooldown finished — "
@@ -536,26 +543,61 @@ def fetch_listings(search: dict) -> list:
         if r.status_code == 403:
             print_403_diagnostics(r)
 
-            # First 403 gets a shorter 2-minute cooldown.
-            # Any consecutive 403 after that gets 5 minutes.
-            if VINTED_403_STREAK == 0:
-                cooldown_seconds = FIRST_403_COOLDOWN
-            else:
-                cooldown_seconds = REPEAT_403_COOLDOWN
-
             VINTED_403_STREAK += 1
 
-            VINTED_COOLDOWN_UNTIL = (
-                time.time()
-                + cooldown_seconds
-            )
+            # First consecutive 403:
+            # wait 2 minutes.
+            if VINTED_403_STREAK == 1:
+                cooldown_seconds = FIRST_403_COOLDOWN
 
-            print(
-                f" [!] Vinted catalogue returned HTTP 403. "
-                f"Cooling down for {cooldown_seconds}s."
-            )
+                VINTED_COOLDOWN_UNTIL = (
+                    time.time()
+                    + cooldown_seconds
+                )
 
-            return []
+                print(
+                    f" [!] Vinted catalogue returned "
+                    f"HTTP 403. Cooling down for "
+                    f"{cooldown_seconds}s."
+                )
+
+                return []
+
+            # Second consecutive 403:
+            # wait 5 minutes.
+            if VINTED_403_STREAK == 2:
+                cooldown_seconds = SECOND_403_COOLDOWN
+
+                VINTED_COOLDOWN_UNTIL = (
+                    time.time()
+                    + cooldown_seconds
+                )
+
+                print(
+                    f" [!] Vinted catalogue returned "
+                    f"HTTP 403 again. Cooling down for "
+                    f"{cooldown_seconds}s."
+                )
+
+                return []
+
+            # Third consecutive 403:
+            # this runner appears to be stuck behind a
+            # Cloudflare challenge. End it cleanly so the
+            # next queued GitHub runner can take over.
+            if VINTED_403_STREAK >= MAX_403_STREAK:
+                STOP_SCANNER = True
+
+                print(
+                    " [!] Third consecutive Vinted HTTP 403."
+                )
+
+                print(
+                    " [!] Ending this scanner early so the "
+                    "next queued GitHub run can take over."
+                )
+
+                return []
 
         if r.status_code != 200:
             print(
@@ -566,8 +608,8 @@ def fetch_listings(search: dict) -> list:
             return []
 
         # Successful request means the temporary 403 block
-        # has cleared. Reset the streak so the next future
-        # block starts with the 2-minute cooldown again.
+        # has cleared. Reset everything so a future block
+        # starts again with the 2-minute cooldown.
         if VINTED_403_STREAK:
             print(
                 " [Vinted] 403 block cleared — "
@@ -575,6 +617,7 @@ def fetch_listings(search: dict) -> list:
             )
 
             VINTED_403_STREAK = 0
+            VINTED_COOLDOWN_UNTIL = 0
 
         items = parse_vinted_catalogue(
             r.text
@@ -1279,6 +1322,8 @@ def validate():
 
 # ── Main ───────────────────────────────────────
 def run():
+    global STOP_SCANNER
+
     validate()
 
     searches = load_searches()
@@ -1476,9 +1521,21 @@ def run():
 
                 found_new += 1
 
+            if STOP_SCANNER:
+                break
+
+        # Save state before potentially ending early.
         save_seen(
             seen
         )
+
+        if STOP_SCANNER:
+            print(
+                "Scanner stopped early due to repeated "
+                "Cloudflare 403 challenges."
+            )
+
+            break
 
         print(
             f"{found_new} new item(s)."
@@ -1489,6 +1546,10 @@ def run():
         time.sleep(
             CHECK_INTERVAL
         )
+
+    print(
+        " Vinted scanner finished."
+    )
 
 
 if __name__ == "__main__":
