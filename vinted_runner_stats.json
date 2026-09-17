@@ -1,47 +1,7 @@
 {
   "runs": [
     {
-      "record_id": "35197539550-1-1789633557",
-      "github_run_id": "35197539550",
-      "github_run_attempt": "1",
-      "github_event_name": "push",
-      "started_at": "2026-09-17T08:25:58.159446+00:00",
-      "ended_at": "2026-09-17T09:21:01.284792+00:00",
-      "outcome": "completed_full_run",
-      "survival_seconds": 3303,
-      "survival_minutes": 55.05,
-      "checks": 524,
-      "cf_ray": null,
-      "cf_edge": null,
-      "ip": "Unknown",
-      "country": "Unknown",
-      "country_code": "Unknown",
-      "region": "Unknown",
-      "city": "Unknown",
-      "asn": "Unknown",
-      "network_org": "Unknown"
-    },
-    {
-      "record_id": "35197860217-1-1789636874",
-      "github_run_id": "35197860217",
-      "github_run_attempt": "1",
-      "github_event_name": "workflow_dispatch",
-      "started_at": "2026-09-17T09:21:14.562371+00:00",
-      "ended_at": "2026-09-17T09:30:40.075954+00:00",
-      "outcome": "cloudflare_challenge",
-      "survival_seconds": 565,
-      "survival_minutes": 9.42,
-      "checks": 91,
-      "cf_ray": "a3c717f0696a1bd6-IAD",
-      "cf_edge": "IAD",
-      "ip": "Unknown",
-      "country": "Unknown",
-      "country_code": "Unknown",
-      "region": "Unknown",
-      "city": "Unknown",
-      "asn": "Unknown",
-      "network_org": "Unknown"
-    },
+      
     {
       "record_id": "35206027593-1-1789638534",
       "github_run_id": "35206027593",
