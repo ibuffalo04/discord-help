@@ -945,6 +945,28 @@
       "asn": "AS8075",
       "network_org": "Microsoft Corporation",
       "lookup_source": "ipapi.co"
+    },
+    {
+      "record_id": "35440309384-1-1789817458",
+      "github_run_id": "35440309384",
+      "github_run_attempt": "1",
+      "github_event_name": "workflow_dispatch",
+      "started_at": "2026-09-19T11:30:58.818727+00:00",
+      "ended_at": "2026-09-19T11:36:35.473786+00:00",
+      "outcome": "cloudflare_challenge",
+      "survival_seconds": 336,
+      "survival_minutes": 5.6,
+      "checks": 54,
+      "cf_ray": "a3d84b25aaba5c18-SJC",
+      "cf_edge": "SJC",
+      "ip": "20.57.198.226",
+      "country": "United States",
+      "country_code": "US",
+      "region": "California",
+      "city": "San Francisco",
+      "asn": "AS8075",
+      "network_org": "Microsoft Corporation",
+      "lookup_source": "ipapi.co"
     }
   ]
 }
