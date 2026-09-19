@@ -857,6 +857,28 @@
       "asn": "AS8075",
       "network_org": "Microsoft Corporation",
       "lookup_source": "ipapi.co"
+    },
+    {
+      "record_id": "35433790039-1-1789808804",
+      "github_run_id": "35433790039",
+      "github_run_attempt": "1",
+      "github_event_name": "workflow_dispatch",
+      "started_at": "2026-09-19T09:06:44.490601+00:00",
+      "ended_at": "2026-09-19T09:18:33.696956+00:00",
+      "outcome": "cloudflare_challenge",
+      "survival_seconds": 709,
+      "survival_minutes": 11.82,
+      "checks": 115,
+      "cf_ray": "a3d780f4982a7100-IAD",
+      "cf_edge": "IAD",
+      "ip": "40.79.247.68",
+      "country": "United States",
+      "country_code": "US",
+      "region": "Virginia",
+      "city": "Boydton",
+      "asn": "AS8075",
+      "network_org": "Microsoft Corporation",
+      "lookup_source": "ipapi.co"
     }
   ]
 }
