@@ -1275,6 +1275,28 @@
       "asn": "AS8075",
       "network_org": "Microsoft Corporation",
       "lookup_source": "ipapi.co"
+    },
+    {
+      "record_id": "35475371038-1-1789864614",
+      "github_run_id": "35475371038",
+      "github_run_attempt": "1",
+      "github_event_name": "schedule",
+      "started_at": "2026-09-20T00:36:54.175055+00:00",
+      "ended_at": "2026-09-20T00:42:49.419601+00:00",
+      "outcome": "cloudflare_challenge",
+      "survival_seconds": 355,
+      "survival_minutes": 5.92,
+      "checks": 59,
+      "cf_ray": "a3dccadada47983a-IAD",
+      "cf_edge": "IAD",
+      "ip": "20.25.10.72",
+      "country": "United States",
+      "country_code": "US",
+      "region": "Virginia",
+      "city": "Oak Hill",
+      "asn": "AS8075",
+      "network_org": "Microsoft Corporation",
+      "lookup_source": "ipapi.co"
     }
   ]
 }
