@@ -2133,6 +2133,28 @@
       "asn": "AS8075",
       "network_org": "Microsoft Corporation",
       "lookup_source": "ipapi.co"
+    },
+    {
+      "record_id": "35645573965-1-1790019228",
+      "github_run_id": "35645573965",
+      "github_run_attempt": "1",
+      "github_event_name": "schedule",
+      "started_at": "2026-09-21T19:33:48.898725+00:00",
+      "ended_at": "2026-09-21T19:42:34.756776+00:00",
+      "outcome": "cloudflare_challenge",
+      "survival_seconds": 526,
+      "survival_minutes": 8.77,
+      "checks": 82,
+      "cf_ray": "a3eb8dcb1bfee407-YUL",
+      "cf_edge": "YUL",
+      "ip": "20.104.156.182",
+      "country": "Canada",
+      "country_code": "CA",
+      "region": "Quebec",
+      "city": "Quebec",
+      "asn": "AS8075",
+      "network_org": "Microsoft Corporation",
+      "lookup_source": "ipapi.co"
     }
   ]
 }
