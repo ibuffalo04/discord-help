@@ -3101,6 +3101,28 @@
       "asn": "AS8075",
       "network_org": "Microsoft Corporation",
       "lookup_source": "ipapi.co"
+    },
+    {
+      "record_id": "35893489572-1-1790188241",
+      "github_run_id": "35893489572",
+      "github_run_attempt": "1",
+      "github_event_name": "schedule",
+      "started_at": "2026-09-23T18:30:41.592999+00:00",
+      "ended_at": "2026-09-23T19:12:31.847139+00:00",
+      "outcome": "cloudflare_challenge",
+      "survival_seconds": 2510,
+      "survival_minutes": 41.83,
+      "checks": 390,
+      "cf_ray": "a3fbdc86ca68393c-MSP",
+      "cf_edge": "MSP",
+      "ip": "13.89.124.29",
+      "country": "United States",
+      "country_code": "US",
+      "region": "Iowa",
+      "city": "Des Moines",
+      "asn": "AS8075",
+      "network_org": "Microsoft Corporation",
+      "lookup_source": "ipapi.co"
     }
   ]
 }
