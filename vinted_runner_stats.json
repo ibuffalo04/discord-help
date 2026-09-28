@@ -4047,6 +4047,28 @@
       "asn": "AS8075",
       "network_org": "Microsoft Corporation",
       "lookup_source": "ipapi.co"
+    },
+    {
+      "record_id": "36490284509-1-1790633143",
+      "github_run_id": "36490284509",
+      "github_run_attempt": "1",
+      "github_event_name": "schedule",
+      "started_at": "2026-09-28T22:05:43.646285+00:00",
+      "ended_at": "2026-09-28T23:00:49.276778+00:00",
+      "outcome": "completed_full_run",
+      "survival_seconds": 3305,
+      "survival_minutes": 55.08,
+      "checks": 533,
+      "cf_ray": null,
+      "cf_edge": null,
+      "ip": "20.57.214.151",
+      "country": "United States",
+      "country_code": "US",
+      "region": "California",
+      "city": "San Francisco",
+      "asn": "AS8075",
+      "network_org": "Microsoft Corporation",
+      "lookup_source": "ipapi.co"
     }
   ]
 }
