@@ -1,28 +1,6 @@
 {
   "runs": [
     {
-      "record_id": "36912573039-1-1790881963",
-      "github_run_id": "36912573039",
-      "github_run_attempt": "1",
-      "github_event_name": "workflow_dispatch",
-      "started_at": "2026-10-01T19:12:43.456526+00:00",
-      "ended_at": "2026-10-01T19:24:50.598067+00:00",
-      "outcome": "cloudflare_challenge",
-      "survival_seconds": 727,
-      "survival_minutes": 12.12,
-      "checks": 116,
-      "cf_ray": "a43dd990284cf887-DFW",
-      "cf_edge": "DFW",
-      "ip": "172.208.152.208",
-      "country": "United States",
-      "country_code": "US",
-      "region": "Wyoming",
-      "city": "Cheyenne",
-      "asn": "AS8075",
-      "network_org": "Microsoft Corporation",
-      "lookup_source": "ipapi.co"
-    },
-    {
       "record_id": "36915316314-1-1790883295",
       "github_run_id": "36915316314",
       "github_run_attempt": "1",
@@ -5499,6 +5477,28 @@
       "asn": "AS8075",
       "network_org": "Microsoft Corporation",
       "lookup_source": "ipwho.is"
+    },
+    {
+      "record_id": "37888372792-1-1791526752",
+      "github_run_id": "37888372792",
+      "github_run_attempt": "1",
+      "github_event_name": "workflow_dispatch",
+      "started_at": "2026-10-09T06:19:12.651626+00:00",
+      "ended_at": "2026-10-09T07:14:19.013723+00:00",
+      "outcome": "completed_full_run",
+      "survival_seconds": 3306,
+      "survival_minutes": 55.1,
+      "checks": 555,
+      "cf_ray": null,
+      "cf_edge": null,
+      "ip": "20.83.53.49",
+      "country": "United States",
+      "country_code": "US",
+      "region": "Iowa",
+      "city": "Des Moines",
+      "asn": "AS8075",
+      "network_org": "Microsoft Corporation",
+      "lookup_source": "ipapi.co"
     }
   ]
 }
