@@ -9,6 +9,8 @@ It runs as a separate Python process/workflow, so it does not add any searches
 or requests to the Xbox scanner's loop.
 """
 
+import re
+
 import vinted_discord_alert as bot
 
 
@@ -48,6 +50,8 @@ PS5_EXCLUDE_WORDS = [
     "victrix",
     "snakebyte",
     "venom",
+    "cableguys",
+    "cable guys",
 
     # Other platforms / controller types.
     "ps4 controller",
@@ -63,17 +67,22 @@ PS5_EXCLUDE_WORDS = [
     "vr controller",
     "media remote",
 
-    # Stands, docks, chargers and cases.
+    # Stands, docks, chargers, cables and cases.
     "controller stand",
+    "phone stand",
     "wall mount",
     "holder",
     "charging station",
     "charging dock",
-    "charger only",
+    "charging stand",
+    "docking station",
+    "charger",
     "dock only",
     "charging cable",
+    "controller cable",
     "usb cable",
     "usb-c cable",
+    "usb c cable",
     "cable only",
     "carry case",
     "travel case",
@@ -99,10 +108,11 @@ PS5_EXCLUDE_WORDS = [
     # Small replacement parts / add-ons.
     "button kit",
     "buttons only",
-    "thumb grips",
-    "thumbgrips",
-    "stick caps",
-    "joystick caps",
+    "thumb cap",
+    "thumb grip",
+    "thumbgrip",
+    "stick cap",
+    "joystick cap",
     "replacement sticks",
     "replacement joystick",
     "analogue module",
@@ -112,6 +122,14 @@ PS5_EXCLUDE_WORDS = [
     "attachment only",
     "controller grip",
     "grip cover",
+
+    # Generic accessory listings.
+    "gaming accessory",
+    "gaming accessories",
+    "controller accessory",
+    "controller accessories",
+    "accessory only",
+    "accessories only",
 
     # Misc accessories.
     "adapter",
@@ -124,6 +142,93 @@ PS5_EXCLUDE_WORDS = [
     "decal",
     "decals",
 ]
+
+
+# Vinted's catalogue HTML can contain unrelated recommendation cards mixed in
+# with the actual search results. The Xbox search is narrow enough that this is
+# less obvious, but PS5/DualSense is currently returning lots of clothing and
+# accessories. Keep an item only if its TITLE looks like an actual controller.
+#
+# We deliberately do NOT reject words such as faulty, broken, drift, repairs,
+# spares, not working, untested, no power, etc. Those are exactly the cheap
+# repairable controllers we want TechXpress to see.
+def _normalise_text(value: str) -> str:
+    value = (value or "").lower()
+    value = re.sub(r"[^a-z0-9]+", " ", value)
+    return " ".join(value.split())
+
+
+def is_ps5_controller_candidate(item: dict) -> bool:
+    title = _normalise_text(item.get("title", ""))
+    brand = _normalise_text(item.get("brand_title", ""))
+
+    if not title:
+        return False
+
+    # The strongest identifier and worth accepting on its own.
+    if "dualsense" in title or "dual sense" in title:
+        return True
+
+    controller_words = (
+        "controller",
+        "gamepad",
+        "joypad",
+        "control pad",
+    )
+
+    has_controller_word = any(
+        word in title
+        for word in controller_words
+    )
+
+    ps5_words = (
+        "ps5",
+        "ps 5",
+        "playstation 5",
+        "playstation5",
+    )
+
+    has_ps5_word = any(
+        word in title
+        for word in ps5_words
+    )
+
+    # Normal titles such as "PS5 controller", "PlayStation 5 gamepad", etc.
+    if has_ps5_word and has_controller_word:
+        return True
+
+    # Vinted sometimes returns very short titles such as "Sony controller"
+    # where the PlayStation/Sony identity sits in the brand field instead.
+    recognised_brand = (
+        "playstation" in brand
+        or brand == "sony"
+        or brand.startswith("sony ")
+    )
+
+    if recognised_brand and has_controller_word:
+        return True
+
+    return False
+
+
+# Keep the base Xbox exclusion logic, then add the PS5-only positive filter.
+# This monkey-patch affects ONLY this dedicated PS5 Python process. The Xbox
+# scanner imports/runs its own process and is completely unchanged.
+_base_matches_exclude_words = bot.matches_exclude_words
+
+
+def ps5_should_skip(item: dict, exclude_words: list) -> bool:
+    if _base_matches_exclude_words(item, exclude_words):
+        return True
+
+    if not is_ps5_controller_candidate(item):
+        return True
+
+    return False
+
+
+bot.matches_exclude_words = ps5_should_skip
+
 
 bot.FALLBACK_SEARCHES = [
     {
