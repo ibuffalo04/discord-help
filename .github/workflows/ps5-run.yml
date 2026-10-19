@@ -1,10 +1,8 @@
 name: vinted-ps5-controller
 
 on:
-  # Background coverage every four hours.
-  # Offset from the Xbox workflow so both scheduled jobs do not deliberately
-  # start at the same minute.
   schedule:
+    # Keep the PS5 background schedule separate from Xbox.
     - cron: '47 */4 * * *'
 
   workflow_dispatch:
@@ -15,16 +13,23 @@ on:
         default: '0'
         type: string
 
-# Completely separate from the Xbox scanner's concurrency group.
-# PS5 runs can therefore run at the same time as Xbox runs without slowing
-# or queueing the Xbox scanner.
+# PS5 has its OWN queue.
+# Manual/scheduled/replacement PS5 runs stack rather than
+# cancelling the current PS5 scanner.
+#
+# Because the group is different from the Xbox scanner,
+# PS5 can run alongside Xbox without slowing or queueing it.
 concurrency:
   group: vinted-ps5-scanner
   cancel-in-progress: false
+  queue: max
 
 jobs:
   run:
     runs-on: ubuntu-latest
+
+    # Same behaviour as Xbox:
+    # 55 minutes scanning + a few minutes for setup/state saving.
     timeout-minutes: 60
 
     permissions:
@@ -32,19 +37,18 @@ jobs:
       actions: write
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: main
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.11'
 
       - run: pip install requests
 
-      # Restore the most recent PS5-only scanner state from Actions cache.
-      # This avoids committing PS5 state back to main, so the PS5 scanner
-      # cannot trigger or interfere with the Xbox workflow through git pushes.
+      # Restore the latest PS5-only state.
+      # This remains separate from Xbox state.
       - name: Restore PS5 scanner state
         id: ps5-state-restore
         uses: actions/cache/restore@v4
@@ -61,12 +65,12 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
+
           python vinted_ps5_alert.py | tee vinted_ps5_scanner.log
         env:
           DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
 
-      # Save state before dispatching a replacement so the handoff run restores
-      # the latest seen IDs and does not resend listings unnecessarily.
+      # Save the PS5 seen IDs / telemetry before any Cloudflare handoff.
       - name: Save PS5 scanner state
         if: always()
         uses: actions/cache/save@v4
@@ -81,8 +85,14 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
+
+          # Normal manual/scheduled runs begin at zero.
+          # Automatic Cloudflare replacements increment it.
           HANDOFF_COUNT: ${{ github.event.inputs.handoff_count || '0' }}
+
+          # Same safety limit as Xbox.
           MAX_AUTO_HANDOFFS: '3'
+
         run: |
           if [ ! -f vinted_ps5_scanner.log ]; then
             echo "No PS5 scanner log found."
@@ -110,6 +120,7 @@ jobs:
           fi
 
           NEXT_HANDOFF=$((CURRENT_HANDOFF + 1))
+
           echo "Automatic PS5 handoff ${NEXT_HANDOFF}/${MAX_AUTO_HANDOFFS}"
 
           WORKFLOW_FILE="${GITHUB_WORKFLOW_REF#${GITHUB_REPOSITORY}/.github/workflows/}"
@@ -130,7 +141,7 @@ jobs:
             -X POST \
             -H "Accept: application/vnd.github+json" \
             -H "Authorization: Bearer ${GH_TOKEN}" \
-            -H "X-GitHub-Api-Version: 2022-11-28" \
+            -H "X-GitHub-Api-Version: 2026-03-10" \
             "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/${WORKFLOW_FILE}/dispatches" \
             -d "$BODY"
           )
