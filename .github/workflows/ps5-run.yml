@@ -1,0 +1,149 @@
+name: vinted-ps5-controller
+
+on:
+  # Background coverage every four hours.
+  # Offset from the Xbox workflow so both scheduled jobs do not deliberately
+  # start at the same minute.
+  schedule:
+    - cron: '47 */4 * * *'
+
+  workflow_dispatch:
+    inputs:
+      handoff_count:
+        description: 'Internal Cloudflare handoff counter'
+        required: false
+        default: '0'
+        type: string
+
+# Completely separate from the Xbox scanner's concurrency group.
+# PS5 runs can therefore run at the same time as Xbox runs without slowing
+# or queueing the Xbox scanner.
+concurrency:
+  group: vinted-ps5-scanner
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    permissions:
+      contents: read
+      actions: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - run: pip install requests
+
+      # Restore the most recent PS5-only scanner state from Actions cache.
+      # This avoids committing PS5 state back to main, so the PS5 scanner
+      # cannot trigger or interfere with the Xbox workflow through git pushes.
+      - name: Restore PS5 scanner state
+        id: ps5-state-restore
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            vinted_ps5_seen_ids.json
+            vinted_ps5_runner_stats.json
+          key: vinted-ps5-state-${{ github.run_id }}
+          restore-keys: |
+            vinted-ps5-state-
+
+      - name: Run PS5 Vinted scanner for 55 minutes
+        id: scanner
+        shell: bash
+        run: |
+          set -o pipefail
+          python vinted_ps5_alert.py | tee vinted_ps5_scanner.log
+        env:
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+
+      # Save state before dispatching a replacement so the handoff run restores
+      # the latest seen IDs and does not resend listings unnecessarily.
+      - name: Save PS5 scanner state
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            vinted_ps5_seen_ids.json
+            vinted_ps5_runner_stats.json
+          key: vinted-ps5-state-${{ github.run_id }}
+
+      - name: Queue replacement after Cloudflare challenge
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HANDOFF_COUNT: ${{ github.event.inputs.handoff_count || '0' }}
+          MAX_AUTO_HANDOFFS: '3'
+        run: |
+          if [ ! -f vinted_ps5_scanner.log ]; then
+            echo "No PS5 scanner log found."
+            exit 0
+          fi
+
+          if ! grep -Fq "Cloudflare challenge confirmed." vinted_ps5_scanner.log; then
+            echo "No Cloudflare challenge detected."
+            echo "No replacement PS5 run needed."
+            exit 0
+          fi
+
+          echo "Cloudflare challenge detected."
+
+          CURRENT_HANDOFF="${HANDOFF_COUNT:-0}"
+
+          if ! [[ "$CURRENT_HANDOFF" =~ ^[0-9]+$ ]]; then
+            CURRENT_HANDOFF=0
+          fi
+
+          if [ "$CURRENT_HANDOFF" -ge "$MAX_AUTO_HANDOFFS" ]; then
+            echo "Automatic handoff limit reached."
+            echo "No additional PS5 run will be queued."
+            exit 0
+          fi
+
+          NEXT_HANDOFF=$((CURRENT_HANDOFF + 1))
+          echo "Automatic PS5 handoff ${NEXT_HANDOFF}/${MAX_AUTO_HANDOFFS}"
+
+          WORKFLOW_FILE="${GITHUB_WORKFLOW_REF#${GITHUB_REPOSITORY}/.github/workflows/}"
+          WORKFLOW_FILE="${WORKFLOW_FILE%@*}"
+
+          echo "Dispatching workflow: ${WORKFLOW_FILE}"
+
+          BODY=$(printf \
+            '{"ref":"main","inputs":{"handoff_count":"%s"}}' \
+            "$NEXT_HANDOFF"
+          )
+
+          HTTP_STATUS=$(curl \
+            -sS \
+            -L \
+            -o /tmp/ps5_workflow_dispatch_response.json \
+            -w "%{http_code}" \
+            -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/${WORKFLOW_FILE}/dispatches" \
+            -d "$BODY"
+          )
+
+          if [[ "$HTTP_STATUS" =~ ^2[0-9][0-9]$ ]]; then
+            echo "Replacement PS5 Vinted scanner successfully queued."
+          else
+            echo "Failed to queue replacement PS5 scanner."
+            echo "GitHub API returned HTTP ${HTTP_STATUS}."
+
+            if [ -s /tmp/ps5_workflow_dispatch_response.json ]; then
+              cat /tmp/ps5_workflow_dispatch_response.json
+            fi
+
+            exit 1
+          fi
