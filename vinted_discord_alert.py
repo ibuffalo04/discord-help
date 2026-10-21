@@ -31,7 +31,6 @@ from datetime import datetime, timezone
 # ──────────────────────────────────────────────
 DISCORD_BOT_TOKEN = os.environ.get("DISCORD_BOT_TOKEN", "")
 DISCORD_CHANNEL_ID = os.environ.get("DISCORD_CHANNEL_ID", "")
-DISCORD_MENTION_USER_ID = "477458466257108993"
 
 # ──────────────────────────────────────────────
 # XBOX CONTROLLER HARD EXCLUSIONS
@@ -2168,14 +2167,6 @@ def send_discord(
         item,
         colour
     )
-
-    # Directly mention Reece on every new-listing alert so Discord
-    # treats it as a personal mention instead of only a channel message.
-    if DISCORD_MENTION_USER_ID:
-        payload["content"] = f"<@{DISCORD_MENTION_USER_ID}>"
-        payload["allowed_mentions"] = {
-            "users": [DISCORD_MENTION_USER_ID]
-        }
 
     url = (
         f"https://discord.com/api/v10/"
