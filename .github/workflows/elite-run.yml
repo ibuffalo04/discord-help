@@ -1,0 +1,143 @@
+name: Xbox Elite Series 2
+
+on:
+  schedule:
+    # Background coverage every four hours, offset from the other scanners.
+    - cron: '27 */4 * * *'
+
+  workflow_dispatch:
+    inputs:
+      handoff_count:
+        description: 'Internal Cloudflare handoff counter'
+        required: false
+        default: '0'
+        type: string
+
+# Elite has its OWN queue. Manual/scheduled/replacement Elite runs stack
+# instead of cancelling each other, but never queue or slow Xbox/PS5 runs.
+concurrency:
+  group: vinted-elite-series-2-scanner
+  cancel-in-progress: false
+  queue: max
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    permissions:
+      contents: read
+      actions: write
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+
+      - run: pip install requests
+
+      - name: Restore Elite scanner state
+        id: elite-state-restore
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            vinted_elite_seen_ids.json
+            vinted_elite_runner_stats.json
+          key: vinted-elite-state-${{ github.run_id }}
+          restore-keys: |
+            vinted-elite-state-
+
+      - name: Run Elite Series 2 Vinted scanner for 55 minutes
+        id: scanner
+        shell: bash
+        run: |
+          set -o pipefail
+          python vinted_elite_alert.py | tee vinted_elite_scanner.log
+        env:
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+
+      - name: Save Elite scanner state
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            vinted_elite_seen_ids.json
+            vinted_elite_runner_stats.json
+          key: vinted-elite-state-${{ github.run_id }}
+
+      - name: Queue replacement after Cloudflare challenge
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HANDOFF_COUNT: ${{ github.event.inputs.handoff_count || '0' }}
+          MAX_AUTO_HANDOFFS: '3'
+
+        run: |
+          if [ ! -f vinted_elite_scanner.log ]; then
+            echo "No Elite scanner log found."
+            exit 0
+          fi
+
+          if ! grep -Fq "Cloudflare challenge confirmed." vinted_elite_scanner.log; then
+            echo "No Cloudflare challenge detected."
+            echo "No replacement Elite run needed."
+            exit 0
+          fi
+
+          echo "Cloudflare challenge detected."
+
+          CURRENT_HANDOFF="${HANDOFF_COUNT:-0}"
+
+          if ! [[ "$CURRENT_HANDOFF" =~ ^[0-9]+$ ]]; then
+            CURRENT_HANDOFF=0
+          fi
+
+          if [ "$CURRENT_HANDOFF" -ge "$MAX_AUTO_HANDOFFS" ]; then
+            echo "Automatic handoff limit reached."
+            echo "No additional Elite run will be queued."
+            exit 0
+          fi
+
+          NEXT_HANDOFF=$((CURRENT_HANDOFF + 1))
+          echo "Automatic Elite handoff ${NEXT_HANDOFF}/${MAX_AUTO_HANDOFFS}"
+
+          WORKFLOW_FILE="${GITHUB_WORKFLOW_REF#${GITHUB_REPOSITORY}/.github/workflows/}"
+          WORKFLOW_FILE="${WORKFLOW_FILE%@*}"
+
+          echo "Dispatching workflow: ${WORKFLOW_FILE}"
+
+          BODY=$(printf \
+            '{"ref":"main","inputs":{"handoff_count":"%s"}}' \
+            "$NEXT_HANDOFF"
+          )
+
+          HTTP_STATUS=$(curl \
+            -sS \
+            -L \
+            -o /tmp/elite_workflow_dispatch_response.json \
+            -w "%{http_code}" \
+            -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "X-GitHub-Api-Version: 2026-03-10" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/${WORKFLOW_FILE}/dispatches" \
+            -d "$BODY"
+          )
+
+          if [[ "$HTTP_STATUS" =~ ^2[0-9][0-9]$ ]]; then
+            echo "Replacement Elite Vinted scanner successfully queued."
+          else
+            echo "Failed to queue replacement Elite scanner."
+            echo "GitHub API returned HTTP ${HTTP_STATUS}."
+
+            if [ -s /tmp/elite_workflow_dispatch_response.json ]; then
+              cat /tmp/elite_workflow_dispatch_response.json
+            fi
+
+            exit 1
+          fi
