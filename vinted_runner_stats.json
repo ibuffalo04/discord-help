@@ -1,28 +1,6 @@
 {
   "runs": [
     {
-      "record_id": "41244668509-1-1793482826",
-      "github_run_id": "41244668509",
-      "github_run_attempt": "1",
-      "github_event_name": "schedule",
-      "started_at": "2026-10-31T21:40:26.839916+00:00",
-      "ended_at": "2026-10-31T22:35:30.506716+00:00",
-      "outcome": "completed_full_run",
-      "survival_seconds": 3303,
-      "survival_minutes": 55.05,
-      "checks": 575,
-      "cf_ray": null,
-      "cf_edge": null,
-      "ip": "52.248.45.210",
-      "country": "United States",
-      "country_code": "US",
-      "region": "Texas",
-      "city": "San Antonio",
-      "asn": "AS8075",
-      "network_org": "Microsoft Corporation",
-      "lookup_source": "ipapi.co"
-    },
-    {
       "record_id": "41260329116-1-1793495742",
       "github_run_id": "41260329116",
       "github_run_attempt": "1",
@@ -5499,6 +5477,28 @@
       "asn": "AS8075",
       "network_org": "Microsoft Corporation",
       "lookup_source": "ipapi.co"
+    },
+    {
+      "record_id": "43702030045-1-1794736893",
+      "github_run_id": "43702030045",
+      "github_run_attempt": "1",
+      "github_event_name": "workflow_dispatch",
+      "started_at": "2026-11-15T10:01:33.235649+00:00",
+      "ended_at": "2026-11-15T10:56:36.002535+00:00",
+      "outcome": "completed_full_run",
+      "survival_seconds": 3302,
+      "survival_minutes": 55.03,
+      "checks": 589,
+      "cf_ray": null,
+      "cf_edge": null,
+      "ip": "Unknown",
+      "country": "Unknown",
+      "country_code": "Unknown",
+      "region": "Unknown",
+      "city": "Unknown",
+      "asn": "Unknown",
+      "network_org": "Unknown",
+      "lookup_source": "None"
     }
   ]
 }
