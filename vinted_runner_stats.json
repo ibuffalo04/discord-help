@@ -1,28 +1,6 @@
 {
   "runs": [
     {
-      "record_id": "41789398854-1-1793785655",
-      "github_run_id": "41789398854",
-      "github_run_attempt": "1",
-      "github_event_name": "workflow_dispatch",
-      "started_at": "2026-11-04T09:47:35.517425+00:00",
-      "ended_at": "2026-11-04T10:42:40.602878+00:00",
-      "outcome": "completed_full_run",
-      "survival_seconds": 3305,
-      "survival_minutes": 55.08,
-      "checks": 585,
-      "cf_ray": null,
-      "cf_edge": null,
-      "ip": "40.76.238.177",
-      "country": "United States",
-      "country_code": "US",
-      "region": "Virginia",
-      "city": "Oak Hill",
-      "asn": "AS8075",
-      "network_org": "Microsoft Corporation",
-      "lookup_source": "ipapi.co"
-    },
-    {
       "record_id": "41789399752-1-1793788983",
       "github_run_id": "41789399752",
       "github_run_attempt": "1",
@@ -5498,6 +5476,28 @@
       "city": "Oak Hill",
       "asn": "AS8075",
       "network_org": "Microsoft Corporation",
+      "lookup_source": "ipapi.co"
+    },
+    {
+      "record_id": "44788298114-1-1795204135",
+      "github_run_id": "44788298114",
+      "github_run_attempt": "1",
+      "github_event_name": "workflow_dispatch",
+      "started_at": "2026-11-20T19:48:55.284487+00:00",
+      "ended_at": "2026-11-20T20:44:01.396218+00:00",
+      "outcome": "completed_full_run",
+      "survival_seconds": 3306,
+      "survival_minutes": 55.1,
+      "checks": 572,
+      "cf_ray": null,
+      "cf_edge": null,
+      "ip": "3.42.157.110",
+      "country": "United States",
+      "country_code": "US",
+      "region": "Oregon",
+      "city": "Boardman",
+      "asn": "AS16509",
+      "network_org": "Amazon.com, Inc.",
       "lookup_source": "ipapi.co"
     }
   ]
