@@ -15,6 +15,7 @@ on:
     paths-ignore:
       - 'vinted_seen_ids.json'
       - 'vinted_runner_stats.json'
+      - 'vinted_source_race.json'
 
   workflow_dispatch:
     inputs:
@@ -63,10 +64,9 @@ jobs:
         run: |
           set -o pipefail
 
-          # Keep the normal Actions log visible while also
-          # saving a copy so we can detect a Cloudflare
-          # challenge after the scanner exits.
-          python vinted_discord_alert.py | tee vinted_scanner.log
+          # The wrapper runs the original Xbox scanner unchanged
+          # while timing the newer catalogue API in the background.
+          python vinted_xbox_race_runner.py | tee vinted_scanner.log
         env:
           DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
           DISCORD_CHANNEL_ID: ${{ secrets.DISCORD_CHANNEL_ID }}
@@ -78,7 +78,7 @@ jobs:
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
 
-          git add vinted_seen_ids.json vinted_runner_stats.json || true
+          git add vinted_seen_ids.json vinted_runner_stats.json vinted_source_race.json || true
 
           if ! git diff --cached --quiet; then
             git commit -m "Update scanner state (automated loop)"
