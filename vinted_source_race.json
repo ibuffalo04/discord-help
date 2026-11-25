@@ -1,7 +1,7 @@
 {
   "version": 1,
   "created_at": "2026-11-25T21:45:36.341897+00:00",
-  "last_saved_epoch": 1795646438.2350595,
+  "last_saved_epoch": 1795649756.3035314,
   "sources": {
     "html": {
       "seeded": true,
@@ -40,10 +40,12 @@
         "10942035209",
         "10972709267",
         "10972724647",
-        "10972745583"
+        "10972745583",
+        "10973055991",
+        "10973062460"
       ],
       "seeded_at": "2026-11-25T21:45:37.743433+00:00",
-      "last_success_at": "2026-11-25T22:40:33.220035+00:00"
+      "last_success_at": "2026-11-25T23:35:51.286450+00:00"
     },
     "api": {
       "seeded": true,
@@ -61,10 +63,12 @@
         "10972709267",
         "10972724647",
         "10969428819",
-        "10972745583"
+        "10972745583",
+        "10973055991",
+        "10973062460"
       ],
       "seeded_at": "2026-11-25T21:45:37.194087+00:00",
-      "last_success_at": "2026-11-25T22:40:37.287588+00:00"
+      "last_success_at": "2026-11-25T23:35:51.629359+00:00"
     }
   },
   "items": {
@@ -139,6 +143,30 @@
       "difference_seconds": 0.547,
       "result": "Tie (within 0.75s)",
       "completed_at": "2026-11-25T22:10:42.217094+00:00"
+    },
+    "10973055991": {
+      "id": "10973055991",
+      "title": "Xbox control ghost cipher - box only",
+      "html_first_seen_epoch": 1795647204.8307624,
+      "html_first_seen": "2026-11-25T22:53:24.830762+00:00",
+      "api_first_seen_epoch": 1795647206.5295367,
+      "api_first_seen": "2026-11-25T22:53:26.529537+00:00",
+      "winner": "html",
+      "difference_seconds": 1.699,
+      "result": "HTML 1.70s faster than API",
+      "completed_at": "2026-11-25T22:53:26.529588+00:00"
+    },
+    "10973062460": {
+      "id": "10973062460",
+      "title": "Xbox controllers.",
+      "api_first_seen_epoch": 1795647326.6254046,
+      "api_first_seen": "2026-11-25T22:55:26.625405+00:00",
+      "html_first_seen_epoch": 1795647328.2428255,
+      "html_first_seen": "2026-11-25T22:55:28.242826+00:00",
+      "winner": "api",
+      "difference_seconds": 1.617,
+      "result": "API 1.62s faster than HTML",
+      "completed_at": "2026-11-25T22:55:28.242871+00:00"
     }
   }
 }
