@@ -1,0 +1,144 @@
+{
+  "version": 1,
+  "created_at": "2026-11-25T21:45:36.341897+00:00",
+  "last_saved_epoch": 1795646438.2350595,
+  "sources": {
+    "html": {
+      "seeded": true,
+      "known_ids": [
+        "10972106094",
+        "10972102523",
+        "10971445896",
+        "10970653091",
+        "10970641092",
+        "10969415036",
+        "10968664995",
+        "10970075041",
+        "10969428819",
+        "10969296619",
+        "10966840665",
+        "10966433617",
+        "10961735098",
+        "10958933021",
+        "10957323620",
+        "10950066754",
+        "10960489465",
+        "10950542721",
+        "10948559552",
+        "10959567005",
+        "10946304009",
+        "10947165564",
+        "10957070124",
+        "10946078790",
+        "10945597731",
+        "10967472931",
+        "10960106793",
+        "10943018153",
+        "10965307365",
+        "10972503000",
+        "10972649114",
+        "10942035209",
+        "10972709267",
+        "10972724647",
+        "10972745583"
+      ],
+      "seeded_at": "2026-11-25T21:45:37.743433+00:00",
+      "last_success_at": "2026-11-25T22:40:33.220035+00:00"
+    },
+    "api": {
+      "seeded": true,
+      "known_ids": [
+        "10972106094",
+        "10972102523",
+        "10971445896",
+        "10970653091",
+        "10970641092",
+        "10969415036",
+        "10968664995",
+        "10970075041",
+        "10972503000",
+        "10972649114",
+        "10972709267",
+        "10972724647",
+        "10969428819",
+        "10972745583"
+      ],
+      "seeded_at": "2026-11-25T21:45:37.194087+00:00",
+      "last_success_at": "2026-11-25T22:40:37.287588+00:00"
+    }
+  },
+  "items": {
+    "10972503000": {
+      "id": "10972503000",
+      "title": "Small dinky XBox controller for the elf (elf not inc) please see all my other elf items",
+      "html_first_seen_epoch": 1795643165.925677,
+      "html_first_seen": "2026-11-25T21:46:05.925677+00:00",
+      "api_first_seen_epoch": 1795643167.178439,
+      "api_first_seen": "2026-11-25T21:46:07.178439+00:00",
+      "winner": "html",
+      "difference_seconds": 1.253,
+      "result": "HTML 1.25s faster than API",
+      "completed_at": "2026-11-25T21:46:07.178478+00:00"
+    },
+    "10972649114": {
+      "id": "10972649114",
+      "title": "Xbox elite controller",
+      "api_first_seen_epoch": 1795644027.2088563,
+      "api_first_seen": "2026-11-25T22:00:27.208856+00:00",
+      "html_first_seen_epoch": 1795644027.3308275,
+      "html_first_seen": "2026-11-25T22:00:27.330827+00:00",
+      "winner": "tie",
+      "difference_seconds": 0.122,
+      "result": "Tie (within 0.75s)",
+      "completed_at": "2026-11-25T22:00:27.330877+00:00"
+    },
+    "10942035209": {
+      "id": "10942035209",
+      "title": "Microsoft SideWinder USB PC Joystick Controller Tested Working",
+      "html_first_seen_epoch": 1795644152.9952066,
+      "html_first_seen": "2026-11-25T22:02:32.995207+00:00"
+    },
+    "10972709267": {
+      "id": "10972709267",
+      "title": "X box one wireless controller",
+      "api_first_seen_epoch": 1795644392.3161047,
+      "api_first_seen": "2026-11-25T22:06:32.316105+00:00",
+      "html_first_seen_epoch": 1795644396.8861616,
+      "html_first_seen": "2026-11-25T22:06:36.886162+00:00",
+      "winner": "api",
+      "difference_seconds": 4.57,
+      "result": "API 4.57s faster than HTML",
+      "completed_at": "2026-11-25T22:06:36.886215+00:00"
+    },
+    "10972724647": {
+      "id": "10972724647",
+      "title": "X box one wireless controller",
+      "html_first_seen_epoch": 1795644516.9197454,
+      "html_first_seen": "2026-11-25T22:08:36.919745+00:00",
+      "api_first_seen_epoch": 1795644517.203325,
+      "api_first_seen": "2026-11-25T22:08:37.203325+00:00",
+      "winner": "tie",
+      "difference_seconds": 0.284,
+      "result": "Tie (within 0.75s)",
+      "completed_at": "2026-11-25T22:08:37.203367+00:00"
+    },
+    "10969428819": {
+      "id": "10969428819",
+      "title": "Xbox Controller Charging Station",
+      "api_first_seen_epoch": 1795644637.327056,
+      "api_first_seen": "2026-11-25T22:10:37.327056+00:00"
+    },
+    "10972745583": {
+      "id": "10972745583",
+      "title": "X box one wireless controller",
+      "html_first_seen_epoch": 1795644641.6697762,
+      "html_first_seen": "2026-11-25T22:10:41.669776+00:00",
+      "api_first_seen_epoch": 1795644642.2170556,
+      "api_first_seen": "2026-11-25T22:10:42.217056+00:00",
+      "winner": "tie",
+      "difference_seconds": 0.547,
+      "result": "Tie (within 0.75s)",
+      "completed_at": "2026-11-25T22:10:42.217094+00:00"
+    }
+  }
+}
