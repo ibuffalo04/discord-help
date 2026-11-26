@@ -1,7 +1,7 @@
 {
   "version": 1,
   "created_at": "2026-11-25T21:45:36.341897+00:00",
-  "last_saved_epoch": 1795656391.457715,
+  "last_saved_epoch": 1795659707.2317305,
   "sources": {
     "html": {
       "seeded": true,
@@ -43,10 +43,11 @@
         "10972745583",
         "10973055991",
         "10973062460",
-        "10973391904"
+        "10973391904",
+        "10973856875"
       ],
       "seeded_at": "2026-11-25T21:45:37.743433+00:00",
-      "last_success_at": "2026-11-26T01:26:26.442811+00:00"
+      "last_success_at": "2026-11-26T02:21:42.218949+00:00"
     },
     "api": {
       "seeded": true,
@@ -69,10 +70,11 @@
         "10973062460",
         "10973391904",
         "10966840665",
-        "10966433617"
+        "10966433617",
+        "10973856875"
       ],
       "seeded_at": "2026-11-25T21:45:37.194087+00:00",
-      "last_success_at": "2026-11-26T01:26:31.273949+00:00"
+      "last_success_at": "2026-11-26T02:21:44.705823+00:00"
     }
   },
   "items": {
@@ -195,6 +197,18 @@
       "title": "Xbox One Controller Mobile Gaming Clip PowerA moga BNIB",
       "api_first_seen_epoch": 1795655061.3317618,
       "api_first_seen": "2026-11-26T01:04:21.331762+00:00"
+    },
+    "10973856875": {
+      "id": "10973856875",
+      "title": "Xbox one wireless controller. Black.",
+      "html_first_seen_epoch": 1795657654.3627236,
+      "html_first_seen": "2026-11-26T01:47:34.362724+00:00",
+      "api_first_seen_epoch": 1795657654.6832685,
+      "api_first_seen": "2026-11-26T01:47:34.683269+00:00",
+      "winner": "tie",
+      "difference_seconds": 0.321,
+      "result": "Tie (within 0.75s)",
+      "completed_at": "2026-11-26T01:47:34.683307+00:00"
     }
   }
 }
