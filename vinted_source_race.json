@@ -1,7 +1,7 @@
 {
   "version": 1,
   "created_at": "2026-11-25T21:45:36.341897+00:00",
-  "last_saved_epoch": 1795697324.2158608,
+  "last_saved_epoch": 1795700638.3476827,
   "sources": {
     "html": {
       "seeded": true,
@@ -40,10 +40,17 @@
         "10976598248",
         "10976603719",
         "10976687176",
-        "10976866034"
+        "10976866034",
+        "10977766039",
+        "10977802029",
+        "10977982659",
+        "10977974150",
+        "10978073113",
+        "10978162495",
+        "10978384667"
       ],
       "seeded_at": "2026-11-26T08:12:30.324899+00:00",
-      "last_success_at": "2026-11-26T12:48:39.196276+00:00"
+      "last_success_at": "2026-11-26T13:43:53.326232+00:00"
     },
     "api": {
       "seeded": true,
@@ -59,10 +66,17 @@
         "10976598248",
         "10976603719",
         "10976687176",
-        "10976866034"
+        "10976866034",
+        "10977766039",
+        "10977802029",
+        "10977982659",
+        "10977974150",
+        "10978073113",
+        "10978162495",
+        "10978384667"
       ],
       "seeded_at": "2026-11-26T08:12:29.809587+00:00",
-      "last_success_at": "2026-11-26T12:48:41.092296+00:00"
+      "last_success_at": "2026-11-26T13:43:55.702532+00:00"
     }
   },
   "items": {
@@ -275,6 +289,90 @@
       "difference_seconds": 3.128,
       "result": "HTML 3.13s faster than API",
       "completed_at": "2026-11-26T11:25:46.265408+00:00"
+    },
+    "10977766039": {
+      "id": "10977766039",
+      "title": "xbox series x / series s, controller back casing",
+      "html_first_seen_epoch": 1795697358.8212452,
+      "html_first_seen": "2026-11-26T12:49:18.821245+00:00",
+      "api_first_seen_epoch": 1795697360.5318768,
+      "api_first_seen": "2026-11-26T12:49:20.531877+00:00",
+      "winner": "html",
+      "difference_seconds": 1.711,
+      "result": "HTML 1.71s faster than API",
+      "completed_at": "2026-11-26T12:49:20.531914+00:00"
+    },
+    "10977802029": {
+      "id": "10977802029",
+      "title": "xbox controller back basing for xbox series x and series s",
+      "api_first_seen_epoch": 1795697480.6523833,
+      "api_first_seen": "2026-11-26T12:51:20.652383+00:00",
+      "html_first_seen_epoch": 1795697482.1657698,
+      "html_first_seen": "2026-11-26T12:51:22.165770+00:00",
+      "winner": "api",
+      "difference_seconds": 1.513,
+      "result": "API 1.51s faster than HTML",
+      "completed_at": "2026-11-26T12:51:22.165815+00:00"
+    },
+    "10977982659": {
+      "id": "10977982659",
+      "title": "Xbox pc controller",
+      "api_first_seen_epoch": 1795698460.6437724,
+      "api_first_seen": "2026-11-26T13:07:40.643772+00:00",
+      "html_first_seen_epoch": 1795698462.3700533,
+      "html_first_seen": "2026-11-26T13:07:42.370053+00:00",
+      "winner": "api",
+      "difference_seconds": 1.726,
+      "result": "API 1.73s faster than HTML",
+      "completed_at": "2026-11-26T13:07:42.370097+00:00"
+    },
+    "10977974150": {
+      "id": "10977974150",
+      "title": "Xbox pc controller",
+      "api_first_seen_epoch": 1795698460.6437724,
+      "api_first_seen": "2026-11-26T13:07:40.643772+00:00",
+      "html_first_seen_epoch": 1795698462.3700533,
+      "html_first_seen": "2026-11-26T13:07:42.370053+00:00",
+      "winner": "api",
+      "difference_seconds": 1.726,
+      "result": "API 1.73s faster than HTML",
+      "completed_at": "2026-11-26T13:07:42.370126+00:00"
+    },
+    "10978073113": {
+      "id": "10978073113",
+      "title": "Xbox one controller",
+      "api_first_seen_epoch": 1795698950.7094803,
+      "api_first_seen": "2026-11-26T13:15:50.709480+00:00",
+      "html_first_seen_epoch": 1795698951.4415975,
+      "html_first_seen": "2026-11-26T13:15:51.441597+00:00",
+      "winner": "tie",
+      "difference_seconds": 0.732,
+      "result": "Tie (within 0.75s)",
+      "completed_at": "2026-11-26T13:15:51.441637+00:00"
+    },
+    "10978162495": {
+      "id": "10978162495",
+      "title": "Xbox controller - read description",
+      "api_first_seen_epoch": 1795699450.655266,
+      "api_first_seen": "2026-11-26T13:24:10.655266+00:00",
+      "html_first_seen_epoch": 1795699450.6626596,
+      "html_first_seen": "2026-11-26T13:24:10.662660+00:00",
+      "winner": "tie",
+      "difference_seconds": 0.007,
+      "result": "Tie (within 0.75s)",
+      "completed_at": "2026-11-26T13:24:10.663585+00:00"
+    },
+    "10978384667": {
+      "id": "10978384667",
+      "title": "Xbox controller",
+      "html_first_seen_epoch": 1795700547.8996203,
+      "html_first_seen": "2026-11-26T13:42:27.899620+00:00",
+      "api_first_seen_epoch": 1795700550.669856,
+      "api_first_seen": "2026-11-26T13:42:30.669856+00:00",
+      "winner": "html",
+      "difference_seconds": 2.77,
+      "result": "HTML 2.77s faster than API",
+      "completed_at": "2026-11-26T13:42:30.669894+00:00"
     }
   }
 }
