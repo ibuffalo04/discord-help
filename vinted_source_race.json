@@ -164,6 +164,60 @@
       "vinted_uploaded_display": "a minute ago",
       "approx_age_seconds": null,
       "approx_listed_at": null
+    },
+    "10981450058": {
+      "id": "10981450058",
+      "title": "Xbox One Arctic Camo Wireless Controller, Brand: Xbox, Condition: Good, 11.00 £, 12.25 £",
+      "detected_epoch": 1795715544.1092734,
+      "detected_at": "2026-11-26T17:52:24.109273+00:00",
+      "vinted_uploaded_display": "Just now",
+      "approx_age_seconds": 0,
+      "approx_listed_at": "2026-11-26T17:52:24.109273+00:00"
+    },
+    "10981675574": {
+      "id": "10981675574",
+      "title": "Black Xbox controller, Brand: Xbox, Condition: Good, 10.00 £, 11.20 £",
+      "detected_epoch": 1795716654.3550642,
+      "detected_at": "2026-11-26T18:10:54.355064+00:00",
+      "vinted_uploaded_display": "Just now",
+      "approx_age_seconds": 0,
+      "approx_listed_at": "2026-11-26T18:10:54.355064+00:00"
+    },
+    "10981688057": {
+      "id": "10981688057",
+      "title": "Xbox Controller, Brand: Xbox, Condition: Satisfactory, 8.00 £, 9.10 £",
+      "detected_epoch": 1795716775.1784022,
+      "detected_at": "2026-11-26T18:12:55.178402+00:00",
+      "vinted_uploaded_display": "a minute ago",
+      "approx_age_seconds": null,
+      "approx_listed_at": null
+    },
+    "10981742793": {
+      "id": "10981742793",
+      "title": "Red Xbox controller, Brand: Xbox, Condition: Good, 10.00 £, 11.20 £",
+      "detected_epoch": 1795717026.875101,
+      "detected_at": "2026-11-26T18:17:06.875101+00:00",
+      "vinted_uploaded_display": "a minute ago",
+      "approx_age_seconds": null,
+      "approx_listed_at": null
+    },
+    "10981781616": {
+      "id": "10981781616",
+      "title": "Black Xbox controller, Brand: Xbox, Condition: Good, 6.00 £, 7.00 £",
+      "detected_epoch": 1795717273.4200766,
+      "detected_at": "2026-11-26T18:21:13.420077+00:00",
+      "vinted_uploaded_display": "2 min ago",
+      "approx_age_seconds": null,
+      "approx_listed_at": null
+    },
+    "10981830743": {
+      "id": "10981830743",
+      "title": "Xbox One charging station, Brand: Xbox, Condition: Very good, 5.00 £, 5.95 £",
+      "detected_epoch": 1795717519.2104135,
+      "detected_at": "2026-11-26T18:25:19.210413+00:00",
+      "vinted_uploaded_display": "2 min ago",
+      "approx_age_seconds": null,
+      "approx_listed_at": null
     }
   }
 }
