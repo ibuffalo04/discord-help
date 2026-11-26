@@ -1,7 +1,7 @@
 {
   "version": 1,
   "created_at": "2026-11-25T21:45:36.341897+00:00",
-  "last_saved_epoch": 1795690689.7378204,
+  "last_saved_epoch": 1795694008.1671383,
   "sources": {
     "html": {
       "seeded": true,
@@ -36,10 +36,14 @@
         "10942035209",
         "10965307365",
         "10976263412",
-        "10976460639"
+        "10976460639",
+        "10976598248",
+        "10976603719",
+        "10976687176",
+        "10976866034"
       ],
       "seeded_at": "2026-11-26T08:12:30.324899+00:00",
-      "last_success_at": "2026-11-26T10:58:04.716495+00:00"
+      "last_success_at": "2026-11-26T11:53:23.149540+00:00"
     },
     "api": {
       "seeded": true,
@@ -51,10 +55,14 @@
         "10966840665",
         "10966433617",
         "10976263412",
-        "10976460639"
+        "10976460639",
+        "10976598248",
+        "10976603719",
+        "10976687176",
+        "10976866034"
       ],
       "seeded_at": "2026-11-26T08:12:29.809587+00:00",
-      "last_success_at": "2026-11-26T10:58:05.387964+00:00"
+      "last_success_at": "2026-11-26T11:53:26.330505+00:00"
     }
   },
   "items": {
@@ -219,6 +227,54 @@
       "difference_seconds": 5.111,
       "result": "API 5.11s faster than HTML",
       "completed_at": "2026-11-26T10:47:05.592458+00:00"
+    },
+    "10976598248": {
+      "id": "10976598248",
+      "title": "Xbox series s replacement rb lb lever",
+      "api_first_seen_epoch": 1795690756.290556,
+      "api_first_seen": "2026-11-26T10:59:16.290556+00:00",
+      "html_first_seen_epoch": 1795690757.853349,
+      "html_first_seen": "2026-11-26T10:59:17.853349+00:00",
+      "winner": "api",
+      "difference_seconds": 1.563,
+      "result": "API 1.56s faster than HTML",
+      "completed_at": "2026-11-26T10:59:17.853399+00:00"
+    },
+    "10976603719": {
+      "id": "10976603719",
+      "title": "Microsoft Xbox One wireless controller – black, model 1537",
+      "html_first_seen_epoch": 1795690877.2952194,
+      "html_first_seen": "2026-11-26T11:01:17.295219+00:00",
+      "api_first_seen_epoch": 1795690881.2139647,
+      "api_first_seen": "2026-11-26T11:01:21.213965+00:00",
+      "winner": "html",
+      "difference_seconds": 3.919,
+      "result": "HTML 3.92s faster than API",
+      "completed_at": "2026-11-26T11:01:21.214007+00:00"
+    },
+    "10976687176": {
+      "id": "10976687176",
+      "title": "Xbox Elite series 2 controller 2 empty box",
+      "api_first_seen_epoch": 1795691371.229429,
+      "api_first_seen": "2026-11-26T11:09:31.229429+00:00",
+      "html_first_seen_epoch": 1795691371.4912562,
+      "html_first_seen": "2026-11-26T11:09:31.491256+00:00",
+      "winner": "tie",
+      "difference_seconds": 0.262,
+      "result": "Tie (within 0.75s)",
+      "completed_at": "2026-11-26T11:09:31.491302+00:00"
+    },
+    "10976866034": {
+      "id": "10976866034",
+      "title": "Faulty Xbox one controllers",
+      "html_first_seen_epoch": 1795692343.1370707,
+      "html_first_seen": "2026-11-26T11:25:43.137071+00:00",
+      "api_first_seen_epoch": 1795692346.2653646,
+      "api_first_seen": "2026-11-26T11:25:46.265365+00:00",
+      "winner": "html",
+      "difference_seconds": 3.128,
+      "result": "HTML 3.13s faster than API",
+      "completed_at": "2026-11-26T11:25:46.265408+00:00"
     }
   }
 }
