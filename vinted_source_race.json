@@ -1,7 +1,7 @@
 {
   "version": 1,
   "created_at": "2026-11-25T21:45:36.341897+00:00",
-  "last_saved_epoch": 1795687374.1158633,
+  "last_saved_epoch": 1795690689.7378204,
   "sources": {
     "html": {
       "seeded": true,
@@ -34,10 +34,12 @@
         "10943018153",
         "10960106793",
         "10942035209",
-        "10965307365"
+        "10965307365",
+        "10976263412",
+        "10976460639"
       ],
       "seeded_at": "2026-11-26T08:12:30.324899+00:00",
-      "last_success_at": "2026-11-26T10:02:49.094650+00:00"
+      "last_success_at": "2026-11-26T10:58:04.716495+00:00"
     },
     "api": {
       "seeded": true,
@@ -47,10 +49,12 @@
         "10973055991",
         "10968664995",
         "10966840665",
-        "10966433617"
+        "10966433617",
+        "10976263412",
+        "10976460639"
       ],
       "seeded_at": "2026-11-26T08:12:29.809587+00:00",
-      "last_success_at": "2026-11-26T10:02:53.972178+00:00"
+      "last_success_at": "2026-11-26T10:58:05.387964+00:00"
     }
   },
   "items": {
@@ -191,6 +195,30 @@
       "title": "children’s Xbox controller",
       "html_first_seen_epoch": 1795681841.5094516,
       "html_first_seen": "2026-11-26T08:30:41.509452+00:00"
+    },
+    "10976263412": {
+      "id": "10976263412",
+      "title": "Xbox light up controller",
+      "html_first_seen_epoch": 1795688924.169997,
+      "html_first_seen": "2026-11-26T10:28:44.169997+00:00",
+      "api_first_seen_epoch": 1795688925.3060663,
+      "api_first_seen": "2026-11-26T10:28:45.306066+00:00",
+      "winner": "html",
+      "difference_seconds": 1.136,
+      "result": "HTML 1.14s faster than API",
+      "completed_at": "2026-11-26T10:28:45.306100+00:00"
+    },
+    "10976460639": {
+      "id": "10976460639",
+      "title": "Xbox wireless controller charger",
+      "api_first_seen_epoch": 1795690020.4816766,
+      "api_first_seen": "2026-11-26T10:47:00.481677+00:00",
+      "html_first_seen_epoch": 1795690025.5924096,
+      "html_first_seen": "2026-11-26T10:47:05.592410+00:00",
+      "winner": "api",
+      "difference_seconds": 5.111,
+      "result": "API 5.11s faster than HTML",
+      "completed_at": "2026-11-26T10:47:05.592458+00:00"
     }
   }
 }
