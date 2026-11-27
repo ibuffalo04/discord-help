@@ -920,6 +920,15 @@
       "vinted_uploaded_display": "a minute ago",
       "approx_age_seconds": null,
       "approx_listed_at": null
+    },
+    "10993128367": {
+      "id": "10993128367",
+      "title": "Xbox controller, Brand: Xbox, Condition: Very good, 12.00 £, 13.30 £",
+      "detected_epoch": 1795805665.5959892,
+      "detected_at": "2026-11-27T18:54:25.595989+00:00",
+      "vinted_uploaded_display": "Just now",
+      "approx_age_seconds": 0,
+      "approx_listed_at": "2026-11-27T18:54:25.595989+00:00"
     }
   }
 }
