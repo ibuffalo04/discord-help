@@ -758,6 +758,24 @@
       "vinted_uploaded_display": "a minute ago",
       "approx_age_seconds": null,
       "approx_listed_at": null
+    },
+    "10988596047": {
+      "id": "10988596047",
+      "title": "Xbox Controller Series S/X, Brand: Xbox, Condition: New without tags, 12.00 £, 13.30 £",
+      "detected_epoch": 1795782721.2411227,
+      "detected_at": "2026-11-27T12:32:01.241123+00:00",
+      "vinted_uploaded_display": "a minute ago",
+      "approx_age_seconds": null,
+      "approx_listed_at": null
+    },
+    "10989115912": {
+      "id": "10989115912",
+      "title": "Xbox Controller Charge Pack (Xbox Series X/S), Brand: Xbox, Condition: Very good, 5.00 £, 5.95 £",
+      "detected_epoch": 1795785719.2487187,
+      "detected_at": "2026-11-27T13:21:59.248719+00:00",
+      "vinted_uploaded_display": "a minute ago",
+      "approx_age_seconds": null,
+      "approx_listed_at": null
     }
   }
 }
