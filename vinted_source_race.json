@@ -794,6 +794,42 @@
       "vinted_uploaded_display": "Just now",
       "approx_age_seconds": 0,
       "approx_listed_at": "2026-11-27T13:55:10.969922+00:00"
+    },
+    "10989778665": {
+      "id": "10989778665",
+      "title": "Official Xbox One Controller Wireless, Brand: Microsoft, Condition: Good, 9.00 £, 10.15 £",
+      "detected_epoch": 1795789197.4982235,
+      "detected_at": "2026-11-27T14:19:57.498224+00:00",
+      "vinted_uploaded_display": "a minute ago",
+      "approx_age_seconds": null,
+      "approx_listed_at": null
+    },
+    "10989806329": {
+      "id": "10989806329",
+      "title": "Black wireless Xbox controller, Brand: Xbox, Condition: New without tags, 12.00 £, 13.30 £",
+      "detected_epoch": 1795789322.0225089,
+      "detected_at": "2026-11-27T14:22:02.022509+00:00",
+      "vinted_uploaded_display": "a minute ago",
+      "approx_age_seconds": null,
+      "approx_listed_at": null
+    },
+    "10987646481": {
+      "id": "10987646481",
+      "title": "Xbox cloud gaming for smartphone pad, Brand: Xbox, Condition: New without tags, 11.00 £, 12.25 £",
+      "detected_epoch": 1795790066.7192364,
+      "detected_at": "2026-11-27T14:34:26.719236+00:00",
+      "vinted_uploaded_display": "3 hours ago",
+      "approx_age_seconds": 10800,
+      "approx_listed_at": "2026-11-27T11:34:26.719236+00:00"
+    },
+    "10990033985": {
+      "id": "10990033985",
+      "title": "miffy controller thumb grips for xbox controllers, Brand: Miffy, Condition: New without tags, 6.00 £, 7.00 £",
+      "detected_epoch": 1795790436.873722,
+      "detected_at": "2026-11-27T14:40:36.873722+00:00",
+      "vinted_uploaded_display": "Just now",
+      "approx_age_seconds": 0,
+      "approx_listed_at": "2026-11-27T14:40:36.873722+00:00"
     }
   }
 }
