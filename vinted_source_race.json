@@ -830,6 +830,51 @@
       "vinted_uploaded_display": "Just now",
       "approx_age_seconds": 0,
       "approx_listed_at": "2026-11-27T14:40:36.873722+00:00"
+    },
+    "10983710705": {
+      "id": "10983710705",
+      "title": "SD steering wheel and pedals for Xbox One, Brand: SuperDrive, Condition: Very good, 10.00 £, 11.20 £",
+      "detected_epoch": 1795793175.8369746,
+      "detected_at": "2026-11-27T15:26:15.836975+00:00",
+      "vinted_uploaded_display": "18 hours ago",
+      "approx_age_seconds": 64800,
+      "approx_listed_at": "2026-11-26T21:26:15.836975+00:00"
+    },
+    "10990644298": {
+      "id": "10990644298",
+      "title": "Black Xbox controller, Brand: Xbox, Condition: Very good, 10.00 £, 11.20 £",
+      "detected_epoch": 1795793548.2797177,
+      "detected_at": "2026-11-27T15:32:28.279718+00:00",
+      "vinted_uploaded_display": "a minute ago",
+      "approx_age_seconds": null,
+      "approx_listed_at": null
+    },
+    "10990936014": {
+      "id": "10990936014",
+      "title": "White xbox controller, Brand: Xbox, Condition: Good, 5.00 £, 5.95 £",
+      "detected_epoch": 1795795044.6547482,
+      "detected_at": "2026-11-27T15:57:24.654748+00:00",
+      "vinted_uploaded_display": "a minute ago",
+      "approx_age_seconds": null,
+      "approx_listed_at": null
+    },
+    "10991021253": {
+      "id": "10991021253",
+      "title": "Xbox controller, Brand: Xbox, Condition: Good, 7.00 £, 8.05 £",
+      "detected_epoch": 1795795410.6804006,
+      "detected_at": "2026-11-27T16:03:30.680401+00:00",
+      "vinted_uploaded_display": "Just now",
+      "approx_age_seconds": 0,
+      "approx_listed_at": "2026-11-27T16:03:30.680401+00:00"
+    },
+    "10991069896": {
+      "id": "10991069896",
+      "title": "Xbox controller, Brand: Xbox, Condition: Good, 8.00 £, 9.10 £",
+      "detected_epoch": 1795795656.8517852,
+      "detected_at": "2026-11-27T16:07:36.851785+00:00",
+      "vinted_uploaded_display": "Just now",
+      "approx_age_seconds": 0,
+      "approx_listed_at": "2026-11-27T16:07:36.851785+00:00"
     }
   }
 }
