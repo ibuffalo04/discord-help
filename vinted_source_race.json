@@ -614,6 +614,24 @@
       "vinted_uploaded_display": "3 hours ago",
       "approx_age_seconds": 10800,
       "approx_listed_at": "2026-11-26T23:54:09.164874+00:00"
+    },
+    "10986004353": {
+      "id": "10986004353",
+      "title": "Xbox mini controller (elf not inc) please see all my other elf items, Brand: Elf On The Shelf, Condition: Very good, 2.50 £, 3.33 £",
+      "detected_epoch": 1795766742.2281213,
+      "detected_at": "2026-11-27T08:05:42.228121+00:00",
+      "vinted_uploaded_display": "an hour ago",
+      "approx_age_seconds": null,
+      "approx_listed_at": null
+    },
+    "10986363126": {
+      "id": "10986363126",
+      "title": "A xbox controller works on any xbox, Brand: Xbox, Condition: Very good, 10.00 £, 11.20 £",
+      "detected_epoch": 1795767853.4595714,
+      "detected_at": "2026-11-27T08:24:13.459571+00:00",
+      "vinted_uploaded_display": "a minute ago",
+      "approx_age_seconds": null,
+      "approx_listed_at": null
     }
   }
 }
