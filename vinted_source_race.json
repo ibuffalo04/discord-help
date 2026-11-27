@@ -929,6 +929,42 @@
       "vinted_uploaded_display": "Just now",
       "approx_age_seconds": 0,
       "approx_listed_at": "2026-11-27T18:54:25.595989+00:00"
+    },
+    "10993440244": {
+      "id": "10993440244",
+      "title": "Xbox controller, Brand: Xbox, Condition: Satisfactory, 4.00 £, 4.90 £",
+      "detected_epoch": 1795807166.5629156,
+      "detected_at": "2026-11-27T19:19:26.562916+00:00",
+      "vinted_uploaded_display": "Just now",
+      "approx_age_seconds": 0,
+      "approx_listed_at": "2026-11-27T19:19:26.562916+00:00"
+    },
+    "10993432827": {
+      "id": "10993432827",
+      "title": "Lillie Xbox controller for the elf (elf not inc) please see all my other elf items, Brand: Elf On The Shelf, Condition: Very good, 2.50 £, 3.33 £",
+      "detected_epoch": 1795807167.4190207,
+      "detected_at": "2026-11-27T19:19:27.419021+00:00",
+      "vinted_uploaded_display": "a minute ago",
+      "approx_age_seconds": null,
+      "approx_listed_at": null
+    },
+    "10993591284": {
+      "id": "10993591284",
+      "title": "Xbox controller, Brand: Xbox, Condition: Good, 7.00 £, 8.05 £",
+      "detected_epoch": 1795807908.442551,
+      "detected_at": "2026-11-27T19:31:48.442551+00:00",
+      "vinted_uploaded_display": "Just now",
+      "approx_age_seconds": 0,
+      "approx_listed_at": "2026-11-27T19:31:48.442551+00:00"
+    },
+    "10993691230": {
+      "id": "10993691230",
+      "title": "Xbox controller charging station, Brand: Xbox, Condition: Good, 4.00 £, 4.90 £",
+      "detected_epoch": 1795808413.390958,
+      "detected_at": "2026-11-27T19:40:13.390958+00:00",
+      "vinted_uploaded_display": "Just now",
+      "approx_age_seconds": 0,
+      "approx_listed_at": "2026-11-27T19:40:13.390958+00:00"
     }
   }
 }
