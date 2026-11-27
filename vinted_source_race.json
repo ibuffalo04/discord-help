@@ -776,6 +776,24 @@
       "vinted_uploaded_display": "a minute ago",
       "approx_age_seconds": null,
       "approx_listed_at": null
+    },
+    "10989347597": {
+      "id": "10989347597",
+      "title": "Xbox controller, Brand: Xbox, Condition: Very good, 10.00 £, 11.20 £",
+      "detected_epoch": 1795786961.2289803,
+      "detected_at": "2026-11-27T13:42:41.228980+00:00",
+      "vinted_uploaded_display": "a minute ago",
+      "approx_age_seconds": null,
+      "approx_listed_at": null
+    },
+    "10989505210": {
+      "id": "10989505210",
+      "title": "Two Xbox Series X controller bundle, Brand: Xbox, Condition: Good, 10.00 £, 11.20 £",
+      "detected_epoch": 1795787710.9699216,
+      "detected_at": "2026-11-27T13:55:10.969922+00:00",
+      "vinted_uploaded_display": "Just now",
+      "approx_age_seconds": 0,
+      "approx_listed_at": "2026-11-27T13:55:10.969922+00:00"
     }
   }
 }
