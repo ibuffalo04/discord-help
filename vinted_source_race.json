@@ -965,6 +965,69 @@
       "vinted_uploaded_display": "Just now",
       "approx_age_seconds": 0,
       "approx_listed_at": "2026-11-27T19:40:13.390958+00:00"
+    },
+    "10994008105": {
+      "id": "10994008105",
+      "title": "Xbox controller red description, Brand: Xbox, Condition: Satisfactory, 10.00 £, 11.20 £",
+      "detected_epoch": 1795809922.2742672,
+      "detected_at": "2026-11-27T20:05:22.274267+00:00",
+      "vinted_uploaded_display": "Just now",
+      "approx_age_seconds": 0,
+      "approx_listed_at": "2026-11-27T20:05:22.274267+00:00"
+    },
+    "10993990481": {
+      "id": "10993990481",
+      "title": "Official Xbox controller, Brand: Xbox, Condition: Satisfactory, 11.00 £, 12.25 £",
+      "detected_epoch": 1795809923.2516367,
+      "detected_at": "2026-11-27T20:05:23.251637+00:00",
+      "vinted_uploaded_display": "a minute ago",
+      "approx_age_seconds": null,
+      "approx_listed_at": null
+    },
+    "10994021853": {
+      "id": "10994021853",
+      "title": "Just Dance 2022 - Xbox One / X, Condition: Very good, 5.00 £, 5.95 £",
+      "detected_epoch": 1795810043.5358276,
+      "detected_at": "2026-11-27T20:07:23.535828+00:00",
+      "vinted_uploaded_display": "a minute ago",
+      "approx_age_seconds": null,
+      "approx_listed_at": null
+    },
+    "10994180602": {
+      "id": "10994180602",
+      "title": "Xbox controller red description, Brand: Xbox, Condition: Satisfactory, 7.00 £, 8.05 £",
+      "detected_epoch": 1795810784.151061,
+      "detected_at": "2026-11-27T20:19:44.151061+00:00",
+      "vinted_uploaded_display": "Just now",
+      "approx_age_seconds": 0,
+      "approx_listed_at": "2026-11-27T20:19:44.151061+00:00"
+    },
+    "10994253837": {
+      "id": "10994253837",
+      "title": "Xbox Series S/X controller, Brand: Xbox, Condition: Very good, 10.00 £, 11.20 £",
+      "detected_epoch": 1795811169.2250574,
+      "detected_at": "2026-11-27T20:26:09.225057+00:00",
+      "vinted_uploaded_display": "Just now",
+      "approx_age_seconds": 0,
+      "approx_listed_at": "2026-11-27T20:26:09.225057+00:00"
+    },
+    "10994256543": {
+      "id": "10994256543",
+      "title": "Titan fall Xbox controller, Brand: Microsoft, Condition: Good, 12.00 £, 13.30 £",
+      "detected_epoch": 1795811170.1736214,
+      "detected_at": "2026-11-27T20:26:10.173621+00:00",
+      "vinted_uploaded_display": "Just now",
+      "approx_age_seconds": 0,
+      "approx_listed_at": "2026-11-27T20:26:10.173621+00:00"
+    },
+    "10994282783": {
+      "id": "10994282783",
+      "title": "Camo Xbox  controller, Brand: Microsoft, Condition: Good, 10.00 £, 11.20 £",
+      "detected_epoch": 1795811289.5517585,
+      "detected_at": "2026-11-27T20:28:09.551759+00:00",
+      "vinted_uploaded_display": "Just now",
+      "approx_age_seconds": 0,
+      "approx_listed_at": "2026-11-27T20:28:09.551759+00:00"
     }
   }
 }
