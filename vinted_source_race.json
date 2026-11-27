@@ -875,6 +875,51 @@
       "vinted_uploaded_display": "Just now",
       "approx_age_seconds": 0,
       "approx_listed_at": "2026-11-27T16:07:36.851785+00:00"
+    },
+    "10991252569": {
+      "id": "10991252569",
+      "title": "Xbox one controller, Brand: Xbox, Condition: Good, 10.00 £, 11.20 £",
+      "detected_epoch": 1795799267.0320442,
+      "detected_at": "2026-11-27T17:07:47.032044+00:00",
+      "vinted_uploaded_display": "an hour ago",
+      "approx_age_seconds": null,
+      "approx_listed_at": null
+    },
+    "10991306915": {
+      "id": "10991306915",
+      "title": "Official Xbox Kids' Lime Green Long-Sleeve Top with Flip-Sequin Logo age 9-10, Brand: Xbox, Condition: Very good, Size: 8 years / 128 cm, 5.00 £, 5.70 £",
+      "detected_epoch": 1795799267.6705205,
+      "detected_at": "2026-11-27T17:07:47.670521+00:00",
+      "vinted_uploaded_display": "40 min ago",
+      "approx_age_seconds": null,
+      "approx_listed_at": null
+    },
+    "10991635516": {
+      "id": "10991635516",
+      "title": "Xbox Series S / X Gaming Controller, Brand: Xbox, Condition: Good, 11.99 £, 13.29 £",
+      "detected_epoch": 1795800023.118759,
+      "detected_at": "2026-11-27T17:20:23.118759+00:00",
+      "vinted_uploaded_display": "26 min ago",
+      "approx_age_seconds": null,
+      "approx_listed_at": null
+    },
+    "10991595055": {
+      "id": "10991595055",
+      "title": "Xbox Series S Purple Controller, Brand: Xbox, Condition: Satisfactory, 9.99 £, 11.19 £",
+      "detected_epoch": 1795800023.7252364,
+      "detected_at": "2026-11-27T17:20:23.725236+00:00",
+      "vinted_uploaded_display": "29 min ago",
+      "approx_age_seconds": null,
+      "approx_listed_at": null
+    },
+    "10992366518": {
+      "id": "10992366518",
+      "title": "Green Xbox one wireless controller box and paperwork, Brand: Xbox, Condition: Very good, 5.00 £, 5.95 £",
+      "detected_epoch": 1795802039.9215956,
+      "detected_at": "2026-11-27T17:53:59.921596+00:00",
+      "vinted_uploaded_display": "a minute ago",
+      "approx_age_seconds": null,
+      "approx_listed_at": null
     }
   }
 }
