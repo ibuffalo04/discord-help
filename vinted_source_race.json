@@ -1109,6 +1109,105 @@
       "vinted_uploaded_display": "Just now",
       "approx_age_seconds": 0,
       "approx_listed_at": "2026-11-28T04:03:21.993078+00:00"
+    },
+    "10999999550": {
+      "id": "10999999550",
+      "title": "Xbox Controller Grips - Xbox Series X|S & Xbox One, Condition: Very good, 6.00 £, 7.00 £",
+      "detected_epoch": 1795866116.0896044,
+      "detected_at": "2026-11-28T11:41:56.089604+00:00",
+      "vinted_uploaded_display": "22 min ago",
+      "approx_age_seconds": null,
+      "approx_listed_at": null
+    },
+    "10999681278": {
+      "id": "10999681278",
+      "title": "Boys pygamas, Brand: Xbox, Condition: New without tags, Size: 14 years / 164 cm, 2.50 £, 3.00 £",
+      "detected_epoch": 1795866118.5212011,
+      "detected_at": "2026-11-28T11:41:58.521201+00:00",
+      "vinted_uploaded_display": "an hour ago",
+      "approx_age_seconds": null,
+      "approx_listed_at": null
+    },
+    "10998594762": {
+      "id": "10998594762",
+      "title": "New Xbox controller ( black), Brand: Xbox, Condition: New without tags, 8.00 £, 9.10 £",
+      "detected_epoch": 1795866119.3274546,
+      "detected_at": "2026-11-28T11:41:59.327455+00:00",
+      "vinted_uploaded_display": "2 hours ago",
+      "approx_age_seconds": 7200,
+      "approx_listed_at": "2026-11-28T09:41:59.327455+00:00"
+    },
+    "10997842956": {
+      "id": "10997842956",
+      "title": "Microsoft sidewinder plug and play gamepad USB controller, Brand: Microsoft, Condition: Very good, 6.50 £, 7.53 £",
+      "detected_epoch": 1795866120.133843,
+      "detected_at": "2026-11-28T11:42:00.133843+00:00",
+      "vinted_uploaded_display": "4 hours ago",
+      "approx_age_seconds": 14400,
+      "approx_listed_at": "2026-11-28T07:42:00.133843+00:00"
+    },
+    "11000535852": {
+      "id": "11000535852",
+      "title": "Xbox pad, Brand: Xbox, Condition: Very good, 5.00 £, 5.95 £",
+      "detected_epoch": 1795867225.130919,
+      "detected_at": "2026-11-28T12:00:25.130919+00:00",
+      "vinted_uploaded_display": "Just now",
+      "approx_age_seconds": 0,
+      "approx_listed_at": "2026-11-28T12:00:25.130919+00:00"
+    },
+    "11000529119": {
+      "id": "11000529119",
+      "title": "Xbox pad, Brand: Xbox, Condition: Good, 5.00 £, 5.95 £",
+      "detected_epoch": 1795867225.952993,
+      "detected_at": "2026-11-28T12:00:25.952993+00:00",
+      "vinted_uploaded_display": "a minute ago",
+      "approx_age_seconds": null,
+      "approx_listed_at": null
+    },
+    "11000568001": {
+      "id": "11000568001",
+      "title": "Xbox controller, Brand: Xbox, Condition: Good, 8.00 £, 9.10 £",
+      "detected_epoch": 1795867346.9524043,
+      "detected_at": "2026-11-28T12:02:26.952404+00:00",
+      "vinted_uploaded_display": "Just now",
+      "approx_age_seconds": 0,
+      "approx_listed_at": "2026-11-28T12:02:26.952404+00:00"
+    },
+    "11000564223": {
+      "id": "11000564223",
+      "title": "Original Xbox Controller, Brand: Xbox, Condition: Good, 4.00 £, 4.90 £",
+      "detected_epoch": 1795867347.7692919,
+      "detected_at": "2026-11-28T12:02:27.769292+00:00",
+      "vinted_uploaded_display": "Just now",
+      "approx_age_seconds": 0,
+      "approx_listed_at": "2026-11-28T12:02:27.769292+00:00"
+    },
+    "11000592004": {
+      "id": "11000592004",
+      "title": "Xbox one controller, Brand: Xbox, Condition: Good, 6.00 £, 7.00 £",
+      "detected_epoch": 1795867468.8316839,
+      "detected_at": "2026-11-28T12:04:28.831684+00:00",
+      "vinted_uploaded_display": "Just now",
+      "approx_age_seconds": 0,
+      "approx_listed_at": "2026-11-28T12:04:28.831684+00:00"
+    },
+    "11000841660": {
+      "id": "11000841660",
+      "title": "Xbox One Kinect Camera, Brand: Xbox, Condition: Good, 5.00 £, 5.95 £",
+      "detected_epoch": 1795868702.7639947,
+      "detected_at": "2026-11-28T12:25:02.763995+00:00",
+      "vinted_uploaded_display": "2 min ago",
+      "approx_age_seconds": null,
+      "approx_listed_at": null
+    },
+    "11000925142": {
+      "id": "11000925142",
+      "title": "xbox controller, Brand: Xbox, Condition: Satisfactory, 13.00 £, 14.35 £",
+      "detected_epoch": 1795869063.9125948,
+      "detected_at": "2026-11-28T12:31:03.912595+00:00",
+      "vinted_uploaded_display": "a minute ago",
+      "approx_age_seconds": null,
+      "approx_listed_at": null
     }
   }
 }
