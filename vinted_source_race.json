@@ -1217,6 +1217,42 @@
       "vinted_uploaded_display": "a minute ago",
       "approx_age_seconds": null,
       "approx_listed_at": null
+    },
+    "11001825788": {
+      "id": "11001825788",
+      "title": "Official Microsoft Xbox Series X S Wireless Controller Carbon Black, Brand: Xbox, Condition: Good, 8.00 £, 9.10 £",
+      "detected_epoch": 1795872796.4272058,
+      "detected_at": "2026-11-28T13:33:16.427206+00:00",
+      "vinted_uploaded_display": "Just now",
+      "approx_age_seconds": 0,
+      "approx_listed_at": "2026-11-28T13:33:16.427206+00:00"
+    },
+    "11001922256": {
+      "id": "11001922256",
+      "title": "Xbox wireless controller, Brand: Xbox, Condition: Good, 10.00 £, 11.20 £",
+      "detected_epoch": 1795873163.7181094,
+      "detected_at": "2026-11-28T13:39:23.718109+00:00",
+      "vinted_uploaded_display": "Just now",
+      "approx_age_seconds": 0,
+      "approx_listed_at": "2026-11-28T13:39:23.718109+00:00"
+    },
+    "11000868737": {
+      "id": "11000868737",
+      "title": "Xbox media remote, Brand: Xbox, Condition: Very good, 13.00 £, 14.35 £",
+      "detected_epoch": 1795874523.1934905,
+      "detected_at": "2026-11-28T14:02:03.193491+00:00",
+      "vinted_uploaded_display": "an hour ago",
+      "approx_age_seconds": null,
+      "approx_listed_at": null
+    },
+    "11002525707": {
+      "id": "11002525707",
+      "title": "Sackboy LittleBigPlanet Thumb Grips – PS5 PS4 Xbox Controller Accessories, Brand: PlayStation, Condition: Very good, 5.99 £, 6.99 £",
+      "detected_epoch": 1795875633.3208387,
+      "detected_at": "2026-11-28T14:20:33.320839+00:00",
+      "vinted_uploaded_display": "a minute ago",
+      "approx_age_seconds": null,
+      "approx_listed_at": null
     }
   }
 }
