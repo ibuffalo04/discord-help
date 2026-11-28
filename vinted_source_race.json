@@ -1073,6 +1073,42 @@
       "vinted_uploaded_display": "2 min ago",
       "approx_age_seconds": null,
       "approx_listed_at": null
+    },
+    "10996421169": {
+      "id": "10996421169",
+      "title": "Xbox controller, Brand: Xbox, Condition: Good, 11.00 £, 12.25 £",
+      "detected_epoch": 1795838226.6483865,
+      "detected_at": "2026-11-28T03:57:06.648386+00:00",
+      "vinted_uploaded_display": "3 hours ago",
+      "approx_age_seconds": 10800,
+      "approx_listed_at": "2026-11-28T00:57:06.648386+00:00"
+    },
+    "10995896449": {
+      "id": "10995896449",
+      "title": "Xbox remote, Brand: Microsoft, Condition: Very good, 5.00 £, 5.95 £",
+      "detected_epoch": 1795838230.909107,
+      "detected_at": "2026-11-28T03:57:10.909107+00:00",
+      "vinted_uploaded_display": "4 hours ago",
+      "approx_age_seconds": 14400,
+      "approx_listed_at": "2026-11-27T23:57:10.909107+00:00"
+    },
+    "10989274930": {
+      "id": "10989274930",
+      "title": "Xbox series elite 2 parts thumb parts and d pad parts, Brand: Microsoft, Condition: Good, 2.00 £, 2.80 £",
+      "detected_epoch": 1795838231.60881,
+      "detected_at": "2026-11-28T03:57:11.608810+00:00",
+      "vinted_uploaded_display": "14 hours ago",
+      "approx_age_seconds": 50400,
+      "approx_listed_at": "2026-11-27T13:57:11.608810+00:00"
+    },
+    "10997242702": {
+      "id": "10997242702",
+      "title": "Gaming elfs XBox controller (elf not inc) please see all my other elf items for sale, Brand: Elf On The Shelf, Condition: Very good, 2.50 £, 3.33 £",
+      "detected_epoch": 1795838601.993078,
+      "detected_at": "2026-11-28T04:03:21.993078+00:00",
+      "vinted_uploaded_display": "Just now",
+      "approx_age_seconds": 0,
+      "approx_listed_at": "2026-11-28T04:03:21.993078+00:00"
     }
   }
 }
