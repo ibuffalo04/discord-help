@@ -1208,6 +1208,15 @@
       "vinted_uploaded_display": "a minute ago",
       "approx_age_seconds": null,
       "approx_listed_at": null
+    },
+    "11001007065": {
+      "id": "11001007065",
+      "title": "Xbox series S/X back, Brand: Xbox, Condition: New without tags, 2.39 £, 3.21 £",
+      "detected_epoch": 1795869432.7784207,
+      "detected_at": "2026-11-28T12:37:12.778421+00:00",
+      "vinted_uploaded_display": "a minute ago",
+      "approx_age_seconds": null,
+      "approx_listed_at": null
     }
   }
 }
