@@ -1253,6 +1253,33 @@
       "vinted_uploaded_display": "a minute ago",
       "approx_age_seconds": null,
       "approx_listed_at": null
+    },
+    "11002749660": {
+      "id": "11002749660",
+      "title": "Wireless controller for Xbox one, Brand: Xbox, Condition: Very good, 10.00 £, 11.20 £",
+      "detected_epoch": 1795876497.218904,
+      "detected_at": "2026-11-28T14:34:57.218904+00:00",
+      "vinted_uploaded_display": "a minute ago",
+      "approx_age_seconds": null,
+      "approx_listed_at": null
+    },
+    "11002787051": {
+      "id": "11002787051",
+      "title": "Xbox Controller (PowerA), Brand: PowerA, Condition: Good, 9.50 £, 10.68 £",
+      "detected_epoch": 1795876622.56642,
+      "detected_at": "2026-11-28T14:37:02.566420+00:00",
+      "vinted_uploaded_display": "a minute ago",
+      "approx_age_seconds": null,
+      "approx_listed_at": null
+    },
+    "11003372996": {
+      "id": "11003372996",
+      "title": "Xbox controller, Brand: Xbox, Condition: Good, 10.00 £, 11.20 £",
+      "detected_epoch": 1795878873.4021897,
+      "detected_at": "2026-11-28T15:14:33.402190+00:00",
+      "vinted_uploaded_display": "a minute ago",
+      "approx_age_seconds": null,
+      "approx_listed_at": null
     }
   }
 }
